@@ -1,0 +1,256 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HOW TESTS ARE WIRED IN
+#
+#  Each test service depends on the infrastructure (postgres/redis) being
+#  healthy, runs its suite, then exits.  The corresponding app service uses
+#  "condition: service_completed_successfully", so Docker Compose refuses to
+#  start it if the test container exited with a non-zero code.
+#
+#  Dependency chain (simplified):
+#
+#    postgres + redis  ──►  backend-test   ──►  backend  ──►  nginx
+#                      └──►  scraper-test  ──►  scraper        │
+#                      └──►  frontend-test ──►  frontend ──────┘
+#
+#  Normal boot:         docker compose up
+#  Skip tests (dev):    docker compose up --scale backend-test=0 \
+#                                         --scale scraper-test=0 \
+#                                         --scale frontend-test=0
+#  Run only tests:      docker compose run --rm backend-test
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ───────────────────────── Infrastructure ──────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-market_db}
+      POSTGRES_USER: ${POSTGRES_USER:-market_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-test-db.sql:/docker-entrypoint-initdb.d/01-init-test-db.sql:ro
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: >
+        CMD-SHELL pg_isready -U ${POSTGRES_USER:-market_user} -d ${POSTGRES_DB:-market_db} &&
+        psql -U ${POSTGRES_USER:-market_user} -d ${POSTGRES_DB:-market_db} -c "SELECT 1 FROM pg_database WHERE datname='market_db_test'" | grep -q 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 160m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ───────────────────────── Test services ───────────────────────────────────
+  # • Built from the same image as the app service they test.
+  # • No restart policy — they must exit on their own.
+  # • Use a throw-away test database (market_db_test) so they never touch
+  #   production data.  Pytest / your migration fixture should create it.
+
+  backend-test:
+    build: ./backend
+    command: >
+      pytest tests/
+        --tb=short
+        -q
+        --color=yes
+    env_file: .env
+    environment:
+      PYTHONPATH: /app
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-market_db_test}
+      REDIS_URL: redis://redis:6379/1          # DB index 1 keeps test keys separate
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  scraper-test:
+    build: ./scraper
+    command: >
+      pytest tests/
+        --tb=short
+        -q
+        --color=yes
+    env_file: .env
+    environment:
+      PYTHONPATH: /app
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-market_db_test}
+      REDIS_URL: redis://redis:6379/1
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  frontend-test:
+    build:
+      context: ./frontend
+      # If your Dockerfile has a "test" stage, target it here so the final
+      # Nginx image is not built unnecessarily:
+      #   target: test
+    # Assumes package.json has a "test:ci" script, e.g. "vitest run"
+    command: npm run test:ci
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ───────────────────────── Application stack ───────────────────────────────
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      # Infrastructure
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Tests must pass first
+      backend-test:
+        condition: service_completed_successfully
+    volumes:
+      - model_cache:/model-cache
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/app
+          target: /app/app
+          ignore:
+            - "**/__pycache__"
+            - "**/*.pyc"
+        - action: rebuild
+          path: ./backend/requirements.txt
+        - action: rebuild
+          path: ./backend/Dockerfile
+
+  scraper:
+    build: ./scraper
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Tests must pass first
+      scraper-test:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    develop:
+      watch:
+        - action: sync
+          path: ./scraper/scraper
+          target: /app/scraper
+          ignore:
+            - "**/__pycache__"
+        - action: rebuild
+          path: ./scraper/requirements.txt
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      # Backend must be up (which already implies backend-test passed)
+      backend:
+        condition: service_healthy
+      # Frontend's own tests must pass first
+      frontend-test:
+        condition: service_completed_successfully
+    ports:
+      - "3000:80"
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: sync
+          path: ./frontend/public
+          target: /app/public
+        - action: rebuild
+          path: ./frontend/package.json
+        - action: rebuild
+          path: ./frontend/vite.config.ts
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+volumes:
+  postgres_data:
+  model_cache:
