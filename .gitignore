@@ -71,6 +71,7 @@ htmlcov/
 # Logs
 logs/
 *.log
+notes.md
 
 # Admin credentials - NEVER commit to git
 backend/app/core/admin_credentials.py
