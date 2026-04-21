@@ -26,6 +26,13 @@ respx==0.20.2
 pandas>=2.2.0
 numpy==1.26.4
 
+# ── Rust native extension (built from backend/rust/market_features/) ──
+# Install locally with: cd backend/rust/market_features && maturin develop --release
+# In Docker: automatically built and installed in the rust-builder stage.
+# market_features is imported conditionally in features.py (has Python fallback).
+polars>=0.39.0       # also used for zero-copy DataFrame conversion in Python fallback
+pyarrow>=15.0.0      # bridge between Polars and pandas/numpy
+
 # Machine Learning
 scikit-learn==1.4.0
 joblib==1.3.2

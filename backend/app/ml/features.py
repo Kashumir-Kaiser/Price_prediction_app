@@ -7,13 +7,30 @@ import structlog
 logger = structlog.get_logger()
 
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Rust extension fallback (§3–§6)
+# ──────────────────────────────────────────────────────────────────────────────
+try:
+    from rust.market_features import compute_rsi as _compute_rsi_rs
+    from rust.market_features import compute_macd as _compute_macd_rs
+    from rust.market_features import compute_bollinger as _compute_bollinger_rs
+    _HAS_RUST = True
+except ImportError:
+    _HAS_RUST = False
+
+
 def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
-    """Calculate Relative Strength Index."""
+    """Calculate Relative Strength Index — uses compiled Rust extension if available."""
+    if _HAS_RUST:
+        result = _compute_rsi_rs(prices.tolist(), period)
+        return pd.Series(result, index=prices.index, name=f"rsi_{period}")
+
+    # Python fallback (pandas ewm)
     delta = prices.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    
-    rs = gain / loss
+    gain = (delta.where(delta > 0, 0)).ewm(alpha=1/period, adjust=False).mean()
+    loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/period, adjust=False).mean()
+    rs = gain / loss.replace(0, float('nan'))
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
@@ -24,32 +41,47 @@ def calculate_macd(
     slow: int = 26,
     signal: int = 9
 ) -> Tuple[pd.Series, pd.Series, pd.Series]:
-    """Calculate MACD line, signal line, and histogram."""
-    ema_fast = prices.ewm(span=fast).mean()
-    ema_slow = prices.ewm(span=slow).mean()
+    """Calculate MACD line, signal line, and histogram — uses Rust if available."""
+    if _HAS_RUST:
+        line, sig, hist = _compute_macd_rs(prices.tolist(), fast, slow, signal)
+        idx = prices.index
+        return (
+            pd.Series(line, index=idx, name="macd"),
+            pd.Series(sig, index=idx, name="macd_signal"),
+            pd.Series(hist, index=idx, name="macd_hist"),
+        )
+
+    # Python fallback
+    ema_fast = prices.ewm(span=fast, adjust=False).mean()
+    ema_slow = prices.ewm(span=slow, adjust=False).mean()
     macd_line = ema_fast - ema_slow
-    signal_line = macd_line.ewm(span=signal).mean()
-    histogram = macd_line - signal_line
-    return macd_line, signal_line, histogram
+    sig_line = macd_line.ewm(span=signal, adjust=False).mean()
+    return macd_line, sig_line, macd_line - sig_line
 
 
 def calculate_bollinger_bands(
     prices: pd.Series,
     window: int = 20,
-    num_std: int = 2
+    num_std: float = 2.0
 ) -> Tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
-    """Calculate Bollinger Bands."""
+    """Calculate Bollinger Bands — uses Rust if available."""
+    if _HAS_RUST:
+        upper, lower, pct_b, bw = _compute_bollinger_rs(prices.tolist(), window, num_std)
+        idx = prices.index
+        return (
+            pd.Series(upper, index=idx, name="bb_upper"),
+            pd.Series(lower, index=idx, name="bb_lower"),
+            pd.Series(pct_b, index=idx, name="bb_pct_b"),
+            pd.Series(bw, index=idx, name="bb_bw"),
+        )
+
+    # Python fallback
     sma = prices.rolling(window=window).mean()
     std = prices.rolling(window=window).std()
-    upper_band = sma + (std * num_std)
-    lower_band = sma - (std * num_std)
-    
-    # %B indicator
+    upper_band = sma + num_std * std
+    lower_band = sma - num_std * std
     percent_b = (prices - lower_band) / (upper_band - lower_band)
-    
-    # Bandwidth
     bandwidth = (upper_band - lower_band) / sma
-    
     return upper_band, lower_band, percent_b, bandwidth
 
 
@@ -140,7 +172,8 @@ def engineer_features(
         "Engineered features",
         rows=len(df),
         features=len(df.columns),
-        include_financials=include_financials
+        include_financials=include_financials,
+        rust_accelerated=_HAS_RUST
     )
     
     return df

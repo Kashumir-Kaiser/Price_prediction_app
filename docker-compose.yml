@@ -18,7 +18,7 @@ version: "3.9"
 #  Skip tests (dev):    docker compose up --scale backend-test=0 \
 #                                         --scale scraper-test=0 \
 #                                         --scale frontend-test=0
-#  Run only tests:      docker compose run --rm backend-test
+#  Run only tests:      docker compose --profile test run --rm backend-test
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -42,7 +42,6 @@ services:
         limits:
           memory: 512m
     healthcheck:
-      # Exec-form: one shell script (avoids compose mangling `test: > CMD-SHELL ...`).
       test:
         - CMD-SHELL
         - >
@@ -69,33 +68,37 @@ services:
       retries: 5
 
   # ───────────────────────── Test services ───────────────────────────────────
-  # • Built from the same image as the app service they test.
-  # • No restart policy — they must exit on their own.
-  # • Use a throw-away test database (market_db_test) so they never touch
-  #   production data.  Pytest / your migration fixture should create it.
 
   backend-test:
-    build: ./backend
-    command: >
-      pytest tests/
-        --tb=short
-        -q
-        --color=yes
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: test
     env_file: .env
     environment:
-      PYTHONPATH: /app
       POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_TEST_DB:-market_db_test}
-      REDIS_URL: redis://redis:6379/1          # DB index 1 keeps test keys separate
-    working_dir: /app
-    volumes:
-      - ./backend/tests:/app/tests:ro
-      - ./backend/pytest.ini:/app/pytest.ini:ro # Ignore unwanted warnings
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: test
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    profiles:
+      - test
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: test
+    profiles:
+      - test
     restart: "no"
     deploy:
       resources:
@@ -109,7 +112,7 @@ services:
     command: pytest --tb=short -q --color=yes
     working_dir: /app/scraper
     volumes:
-      - ./scraper/pytest.ini:/app/pytest.ini:ro # Ignore unwanted warnings
+      - ./scraper/pytest.ini:/app/pytest.ini:ro
     env_file: .env
     environment:
       PYTHONPATH: /app
@@ -127,19 +130,18 @@ services:
         limits:
           memory: 256m
 
-  frontend-test:
-    build:
-      context: ./frontend
-      target: test
-      dockerfile: Dockerfile
-    image: price_prediction_app-frontend-test:latest
-    # Assumes package.json has a "test:ci" script, e.g. "vitest run"
-    command: npm run test:ci
-    restart: "no"
+  # ───────────────────────── VNStock Sidecar ───────────────────────────────────
+  vnstock-sidecar:
+    build: ./vnstock-sidecar
+    environment:
+      POSTGRES_HOST: postgres
+    expose:
+      - "9001"
+    restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 512m
+          memory: 256m
 
   # ───────────────────────── Application stack ───────────────────────────────
 
@@ -150,12 +152,10 @@ services:
       POSTGRES_HOST: postgres
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      # Infrastructure
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # Tests must pass first
       backend-test:
         condition: service_completed_successfully
     volumes:
@@ -201,7 +201,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # Tests must pass first
       scraper-test:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -223,10 +222,8 @@ services:
     build: ./frontend
     restart: unless-stopped
     depends_on:
-      # Backend must be up (which already implies backend-test passed)
       backend:
         condition: service_healthy
-      # Frontend's own tests must pass first
       frontend-test:
         condition: service_completed_successfully
     ports:
