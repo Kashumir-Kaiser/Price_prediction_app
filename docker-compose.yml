@@ -42,9 +42,12 @@ services:
         limits:
           memory: 512m
     healthcheck:
-      test: >
-        CMD-SHELL pg_isready -U ${POSTGRES_USER:-market_user} -d ${POSTGRES_DB:-market_db} &&
-        psql -U ${POSTGRES_USER:-market_user} -d ${POSTGRES_DB:-market_db} -c "SELECT 1 FROM pg_database WHERE datname='market_db_test'" | grep -q 1
+      # Exec-form: one shell script (avoids compose mangling `test: > CMD-SHELL ...`).
+      test:
+        - CMD-SHELL
+        - >
+          pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" &&
+          psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tc "SELECT 1 FROM pg_database WHERE datname='market_db_test'" | grep -q 1
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,6 +88,9 @@ services:
       POSTGRES_DB: ${POSTGRES_TEST_DB:-market_db_test}
       REDIS_URL: redis://redis:6379/1          # DB index 1 keeps test keys separate
     working_dir: /app
+    volumes:
+      - ./backend/tests:/app/tests:ro
+      - ./backend/pytest.ini:/app/pytest.ini:ro # Ignore unwanted warnings
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,19 +103,19 @@ services:
           memory: 512m
 
   scraper-test:
-    build: ./scraper
-    command: >
-      pytest tests/
-        --tb=short
-        -q
-        --color=yes
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    command: pytest --tb=short -q --color=yes
+    working_dir: /app/scraper
+    volumes:
+      - ./scraper/pytest.ini:/app/pytest.ini:ro # Ignore unwanted warnings
     env_file: .env
     environment:
       PYTHONPATH: /app
       POSTGRES_HOST: postgres
       POSTGRES_DB: ${POSTGRES_TEST_DB:-market_db_test}
       REDIS_URL: redis://redis:6379/1
-    working_dir: /app
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,9 +130,9 @@ services:
   frontend-test:
     build:
       context: ./frontend
-      # If your Dockerfile has a "test" stage, target it here so the final
-      # Nginx image is not built unnecessarily:
-      #   target: test
+      target: test
+      dockerfile: Dockerfile
+    image: price_prediction_app-frontend-test:latest
     # Assumes package.json has a "test:ci" script, e.g. "vitest run"
     command: npm run test:ci
     restart: "no"
@@ -181,9 +187,13 @@ services:
           path: ./backend/Dockerfile
 
   scraper:
-    build: ./scraper
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    working_dir: /app/scraper
     env_file: .env
     environment:
+      PYTHONPATH: /app
       POSTGRES_HOST: postgres
       REDIS_URL: redis://redis:6379/0
     depends_on:
@@ -202,7 +212,7 @@ services:
     develop:
       watch:
         - action: sync
-          path: ./scraper/scraper
+          path: ./scraper
           target: /app/scraper
           ignore:
             - "**/__pycache__"

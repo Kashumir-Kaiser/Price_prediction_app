@@ -1,16 +1,12 @@
 """APScheduler-based data ingestion scheduler."""
 import asyncio
 import os
-import sys
 from pathlib import Path 
 from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import structlog
-
-project_root = Path(__file__).resolve().parent
-sys.path.insert(0, str(project_root))
 
 from scraper.jobs.crypto_job import run_crypto_job
 from scraper.jobs.stablecoin_job import run_stablecoin_job

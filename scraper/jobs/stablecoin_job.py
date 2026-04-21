@@ -1,12 +1,8 @@
 """Stablecoin data ingestion job."""
 import asyncio
-import sys
 import os
 from datetime import datetime, timedelta
 import structlog
-
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from backend.app.services.alpaca_service import fetch_bars, check_stablecoin_deviation, STABLE_SYMBOLS
 from backend.app.db.database import AsyncSessionLocal

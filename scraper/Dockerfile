@@ -7,13 +7,15 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY scraper/requirements.txt /app/scraper-requirements.txt
+COPY backend/requirements.txt /app/backend-requirements.txt
+RUN pip install --no-cache-dir -r /app/scraper-requirements.txt -r /app/backend-requirements.txt
 
-# Copy entire repo into /app so 'scraper' is a top-level importable package
-COPY . /app/
+# Build context is ./scraper — copy into /app/scraper so `scraper` is a package
+# (COPY . /app/ would flatten files and break `python -m scraper.scheduler`).
+COPY scraper/ /app/scraper/
+COPY backend/ /app/backend/
 
-# PYTHONPATH must include /app so 'from scraper.jobs...' resolves
 ENV PYTHONPATH=/app
 
 CMD ["python", "-m", "scraper.scheduler"]

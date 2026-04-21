@@ -11,6 +11,10 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Explicit test stage
+FROM builder AS test
+CMD ["npm", "run", "test:ci"]
+
 # Production stage with nginx
 FROM nginx:1.25-alpine
 

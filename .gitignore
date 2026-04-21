@@ -72,6 +72,7 @@ htmlcov/
 logs/
 *.log
 notes.md
+repomix-output.xml
 
 # Admin credentials - NEVER commit to git
 backend/app/core/admin_credentials.py

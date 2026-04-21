@@ -1,12 +1,8 @@
 """Vietnamese stock data ingestion job."""
 import asyncio
-import sys
 import os
 from datetime import datetime, date, timedelta
 import structlog
-
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from backend.app.services.vnstock_service import (
     fetch_ohlcv, fetch_financials, get_all_symbols, sleep_between_tickers

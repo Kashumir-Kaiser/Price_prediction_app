@@ -1,5 +1,4 @@
 #!/bin/bash
-# backend/entrypoint.sh
 set -e
 
 echo "[entrypoint] Waiting for PostgreSQL..."
@@ -11,7 +10,13 @@ echo "[entrypoint] Running DB migrations..."
 python -m app.db.migrate
 
 echo "[entrypoint] Seeding admin user..."
-python -m app.core.seed_admin  # idempotent — safe to call every startup
+python -m app.core.seed_admin
+
+# If a command is provided, run it instead of starting uvicorn
+if [ $# -gt 0 ]; then
+    echo "[entrypoint] Executing custom command: $*"
+    exec "$@"
+fi
 
 echo "[entrypoint] Checking model cache..."
 # Pull pre-trained base models from remote storage if not present.

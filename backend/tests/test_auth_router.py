@@ -76,7 +76,7 @@ class TestLogin:
         mock_verify.return_value = True
         mock_token.return_value = "test.jwt.token"
 
-        response = client.post("/auth/login", data={
+        response = client.post("/api/auth/login", data={
             "username": "testuser",
             "password": "password123"
         })
@@ -95,7 +95,7 @@ class TestLogin:
         mock_get_user.return_value = mock_user
 
         with patch('app.routers.auth.verify_password', return_value=False):
-            response = client.post("/auth/login", data={
+            response = client.post("/api/auth/login", data={
                 "username": "testuser",
                 "password": "wrongpassword"
             })
@@ -107,7 +107,7 @@ class TestLogin:
         """Test SQL injection in login username returns 422."""
         mock_get_user.return_value = None
 
-        response = client.post("/auth/login", data={
+        response = client.post("/api/auth/login", data={
             "username": "' OR '1'='1",
             "password": "password123"
         })
