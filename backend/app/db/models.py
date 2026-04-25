@@ -1,107 +1,105 @@
 """SQLAlchemy ORM models."""
+from datetime import datetime, timezone
+
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Date, Numeric, BigInteger,
-    JSON, Boolean, UniqueConstraint, Index,          # ← Index added to imports
+    Column, Integer, String, Float, DateTime, Boolean, Index,
+    text, UniqueConstraint, BigInteger, Numeric
 )
-from sqlalchemy.sql import func
-from app.db.database import Base
+from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
+from sqlalchemy.orm import declarative_base
 
-
-class OHLCVCrypto(Base):
-    __tablename__ = "ohlcv_crypto"
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    symbol = Column(String(12), nullable=False, index=True)
-    ts = Column(DateTime(timezone=True), nullable=False, index=True)
-    open = Column(Numeric(18, 8))
-    high = Column(Numeric(18, 8))
-    low = Column(Numeric(18, 8))
-    close = Column(Numeric(18, 8))
-    volume = Column(Numeric(24, 8))
-    vwap = Column(Numeric(18, 8))
-    __table_args__ = (
-        UniqueConstraint('symbol', 'ts', name='uix_crypto_symbol_ts'),
-        {"extend_existing": True},               # ← fixes "already defined" on re-import
-    )
-
-
-class OHLCVStocks(Base):
-    __tablename__ = "ohlcv_stocks"
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    symbol = Column(String(10), nullable=False, index=True)
-    ts = Column(Date, nullable=False, index=True)
-    open = Column(Numeric(12, 2))
-    high = Column(Numeric(12, 2))
-    low = Column(Numeric(12, 2))
-    close = Column(Numeric(12, 2))
-    volume = Column(BigInteger)
-    __table_args__ = (
-        UniqueConstraint('symbol', 'ts', name='uix_stock_symbol_ts'),
-        {"extend_existing": True},
-    )
-
-
-class FinancialReports(Base):
-    __tablename__ = "financial_reports"
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    symbol = Column(String(10), nullable=False, index=True)
-    period = Column(String(8), nullable=False)
-    report_type = Column(String(20), nullable=False)
-    data = Column(JSON, nullable=False)
-    fetched_at = Column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (
-        UniqueConstraint('symbol', 'period', 'report_type', name='uix_financial_report'),
-        {"extend_existing": True},
-    )
-
-
-class Watchlist(Base):
-    __tablename__ = "watchlist"
-    symbol = Column(String(10), primary_key=True)
-    asset_type = Column(String(10), nullable=False)
-    active = Column(Boolean, default=True)
-    __table_args__ = ({"extend_existing": True},)
-
-
-class ModelRegistry(Base):
-    __tablename__ = "model_registry"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    symbol = Column(String(12), nullable=False, index=True)
-    model_type = Column(String(10), nullable=False)
-    version = Column(Integer, nullable=False)
-    metrics = Column(JSON)
-    artifact_path = Column(String(500))
-    trained_at = Column(DateTime(timezone=True), server_default=func.now())
-    active = Column(Boolean, default=False)
-    __table_args__ = ({"extend_existing": True},)
+Base = declarative_base()
 
 
 class User(Base):
+    """User model with authentication and RBAC."""
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(64), nullable=False, unique=True, index=True)
-    email = Column(String(255), nullable=False, unique=True, index=True)
-    password_hash = Column(String(256), nullable=False)
-    role = Column(String(16), nullable=False, default="user")
-    is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    last_login_at = Column(DateTime(timezone=True), nullable=True)
-    __table_args__ = ({"extend_existing": True},)
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(64), unique=True, nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(16), default="user", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("idx_users_username", "username"),
+        Index("idx_users_role", "role"),
+    )
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username='{self.username}', role='{self.role}')>"
+
+
+class PriceBar(Base):
+    """Price bar data (OHLCV) for any asset."""
+    __tablename__ = "price_bars"
+
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(32), nullable=False)
+    ts = Column(DateTime, nullable=False)
+    open = Column(Numeric(18, 8), nullable=False)
+    high = Column(Numeric(18, 8), nullable=False)
+    low = Column(Numeric(18, 8), nullable=False)
+    close = Column(Numeric(18, 8), nullable=False)
+    volume = Column(Numeric(24, 8), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "ts", name="uq_price_bars_symbol_ts"),
+        Index("idx_price_bars_symbol_ts", "symbol", "ts"),
+    )
+
+
+class CryptoBar(PriceBar):
+    """Crypto-specific price bar (inherits from PriceBar)."""
+    __tablename__ = "crypto_bars"
+
+    id = Column(Integer, primary_key=True)
+
+
+class StockBar(PriceBar):
+    """Stock-specific price bar (inherits from PriceBar)."""
+    __tablename__ = "stock_bars"
+
+    id = Column(Integer, primary_key=True)
+
+
+class StockDaily(Base):
+    """Stock daily price bar (used by scraper)."""
+    __tablename__ = "stock_daily"
+
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(32), nullable=False)
+    ts = Column(DateTime, nullable=False)
+    open = Column(Numeric(18, 8), nullable=False)
+    high = Column(Numeric(18, 8), nullable=False)
+    low = Column(Numeric(18, 8), nullable=False)
+    close = Column(Numeric(18, 8), nullable=False)
+    volume = Column(Numeric(24, 8), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "ts", name="uq_stock_daily_symbol_ts"),
+        Index("idx_stock_daily_symbol_ts", "symbol", "ts"),
+    )
 
 
 class RequestLog(Base):
+    """Traffic request log for admin analytics."""
     __tablename__ = "request_logs"
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    method = Column(String(10), nullable=False)
+
+    id = Column(Integer, primary_key=True)
+    method = Column(String(16), nullable=False)
     path = Column(String(512), nullable=False)
     status_code = Column(Integer, nullable=False)
     duration_ms = Column(Integer, nullable=False)
-    client_ip = Column(String(64), nullable=False)
+    client_ip = Column(String(64), nullable=True)
     username = Column(String(64), nullable=True)
-    logged_at = Column(DateTime(timezone=True), server_default=func.now())
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
     __table_args__ = (
-        Index("idx_rl_logged_at", "logged_at"),  # ← proper Index objects
-        Index("idx_rl_path", "path"),             #   replaces invalid postgresql_indexes dict
-        Index("idx_rl_client_ip", "client_ip"),
-        Index("idx_rl_username", "username"),
-        {"extend_existing": True},
+        Index("idx_request_logs_timestamp", "timestamp"),
+        Index("idx_request_logs_path", "path"),
     )

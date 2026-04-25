@@ -1,240 +1,233 @@
-"""Admin dashboard router with traffic stats and user management."""
-from fastapi import APIRouter, Depends, HTTPException
+"""Admin-only router with RBAC enforcement."""
+from fastapi import APIRouter, HTTPException, status, Depends
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, select, and_, case, desc
-from datetime import datetime, timedelta
-from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import structlog
 
 from app.db.database import get_db
-from app.db.models import RequestLog, User
+from app.db.models import User, RequestLog
 from app.routers.auth import require_admin
 
-router = APIRouter(
-    tags=["admin"],
-    dependencies=[Depends(require_admin)]  # All routes require admin role
-)
+router = APIRouter()
+logger = structlog.get_logger()
 
 
-# Response schemas
-class OverviewStats(BaseModel):
-    total_requests_today: int
-    unique_ips_today: int
-    avg_response_ms: float
-    error_rate_pct: float
+class UpdateRoleRequest(BaseModel):
+    """Update role request schema."""
+    role: str = Field(..., pattern=r"^(user|admin)$")
 
 
-class TrafficHourly(BaseModel):
-    hour: str
-    requests: int
-    errors: int
+class CreateUserRequest(BaseModel):
+    """Create user request schema (admin only)."""
+    username: str = Field(..., min_length=3, max_length=64, pattern=r'^[a-zA-Z0-9_]+$')
+    email: str = Field(..., pattern=r'^\S+@\S+\.\S+$')
+    password: str = Field(..., min_length=8, max_length=128)
+    role: str = Field(default="user", pattern=r"^(user|admin)$")
+    is_active: bool = True
 
 
-class EndpointStats(BaseModel):
-    path: str
-    hits: int
-    avg_duration_ms: float
-    error_rate_pct: float
-
-
-class UserStats(BaseModel):
-    username: str
-    requests_today: int
-    last_seen: Optional[datetime]
-
-
-class ErrorLog(BaseModel):
-    method: str
-    path: str
-    status_code: int
-    duration_ms: int
-    logged_at: datetime
-
-
-class UserListItem(BaseModel):
+class UserResponse(BaseModel):
+    """User response schema."""
     id: int
     username: str
     email: str
     role: str
     is_active: bool
-    created_at: datetime
-    last_login_at: Optional[datetime]
+    created_at: str
+    updated_at: str
+    last_login_at: str | None
 
 
-@router.get("/stats/overview", response_model=OverviewStats)
-async def get_overview_stats(db: AsyncSession = Depends(get_db)):
-    """Get overview stats for today."""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-
-    result = await db.execute(
-        select(
-            func.count().label("total_requests"),
-            func.count(func.distinct(RequestLog.client_ip)).label("unique_ips"),
-            func.avg(RequestLog.duration_ms).label("avg_duration_ms"),
-            (func.sum(case(
-                (RequestLog.status_code >= 400, 1),
-                else_=0
-            )) * 100.0 / func.count()).label("error_rate_pct"),
-        ).where(RequestLog.logged_at >= today_start)
-    )
-    row = result.one()
-
-    return OverviewStats(
-        total_requests_today=row.total_requests or 0,
-        unique_ips_today=row.unique_ips or 0,
-        avg_response_ms=round(row.avg_duration_ms or 0, 1),
-        error_rate_pct=round(row.error_rate_pct or 0, 2),
-    )
+class TrafficStats(BaseModel):
+    """Traffic statistics response."""
+    total_requests: int
+    requests_by_status: list
+    requests_by_method: list
+    avg_duration_ms: float
+    top_paths: list
+    period_days: int = 7
 
 
-@router.get("/stats/traffic", response_model=List[TrafficHourly])
-async def get_traffic_stats(db: AsyncSession = Depends(get_db)):
-    """Get requests per hour for last 24 hours."""
-    since = datetime.utcnow() - timedelta(hours=24)
+# All routes use require_admin dependency for RBAC
 
-    result = await db.execute(
-        select(
-            func.date_trunc('hour', RequestLog.logged_at).label("hour"),
-            func.count().label("requests"),
-            func.sum(case(
-                (RequestLog.status_code >= 400, 1),
-                else_=0
-            )).label("errors"),
-        )
-        .where(RequestLog.logged_at >= since)
-        .group_by(func.date_trunc('hour', RequestLog.logged_at))
-        .order_by(func.date_trunc('hour', RequestLog.logged_at))
-    )
+@router.get("/admin/users", response_model=list[UserResponse])
+async def list_users(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all users (admin only)."""
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    users = result.scalars().all()
 
     return [
-        TrafficHourly(
-            hour=row.hour.strftime("%Y-%m-%d %H:00"),
-            requests=row.requests,
-            errors=row.errors or 0
+        UserResponse(
+            id=u.id,
+            username=u.username,
+            email=u.email,
+            role=u.role,
+            is_active=u.is_active,
+            created_at=u.created_at.isoformat() if u.created_at else None,
+            updated_at=u.updated_at.isoformat() if u.updated_at else None,
+            last_login_at=u.last_login_at.isoformat() if u.last_login_at else None,
         )
-        for row in result.all()
+        for u in users
     ]
 
 
-@router.get("/stats/endpoints", response_model=List[EndpointStats])
-async def get_endpoint_stats(db: AsyncSession = Depends(get_db), limit: int = 10):
-    """Get top endpoints by hit count."""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-
-    result = await db.execute(
-        select(
-            RequestLog.path.label("path"),
-            func.count().label("hits"),
-            func.avg(RequestLog.duration_ms).label("avg_duration_ms"),
-            (func.sum(case(
-                (RequestLog.status_code >= 400, 1),
-                else_=0
-            )) * 100.0 / func.count()).label("error_rate_pct"),
+@router.patch("/admin/users/{user_id}/role")
+async def update_user_role(
+    user_id: int,
+    body: UpdateRoleRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update user role (admin only). Prevents self-demotion."""
+    # Prevent self-demotion
+    if user_id == admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify your own role.",
         )
-        .where(RequestLog.logged_at >= today_start)
-        .group_by(RequestLog.path)
-        .order_by(desc(func.count()))
-        .limit(limit)
-    )
 
-    return [
-        EndpointStats(
-            path=row.path,
-            hits=row.hits,
-            avg_duration_ms=round(row.avg_duration_ms or 0, 1),
-            error_rate_pct=round(row.error_rate_pct or 0, 2),
-        )
-        for row in result.all()
-    ]
-
-
-@router.get("/stats/users", response_model=List[UserStats])
-async def get_user_stats(db: AsyncSession = Depends(get_db)):
-    """Get user activity stats."""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-
-    result = await db.execute(
-        select(
-            RequestLog.username.label("username"),
-            func.count().label("requests_today"),
-            func.max(RequestLog.logged_at).label("last_seen"),
-        )
-        .where(
-            and_(
-                RequestLog.logged_at >= today_start,
-                RequestLog.username.isnot(None)
-            )
-        )
-        .group_by(RequestLog.username)
-        .order_by(desc(func.count()))
-    )
-
-    return [
-        UserStats(
-            username=row.username,
-            requests_today=row.requests_today,
-            last_seen=row.last_seen
-        )
-        for row in result.all()
-    ]
-
-
-@router.get("/stats/errors", response_model=List[ErrorLog])
-async def get_error_logs(db: AsyncSession = Depends(get_db), limit: int = 20):
-    """Get recent error requests (4xx/5xx)."""
-    result = await db.execute(
-        select(RequestLog)
-        .where(RequestLog.status_code >= 400)
-        .order_by(desc(RequestLog.logged_at))
-        .limit(limit)
-    )
-
-    return [
-        ErrorLog(
-            method=log.method,
-            path=log.path,
-            status_code=log.status_code,
-            duration_ms=log.duration_ms,
-            logged_at=log.logged_at
-        )
-        for log in result.scalars().all()
-    ]
-
-
-@router.get("/users", response_model=List[UserListItem])
-async def get_all_users(db: AsyncSession = Depends(get_db)):
-    """Get all registered users."""
-    result = await db.execute(
-        select(User).order_by(User.created_at.desc())
-    )
-
-    return [
-        UserListItem(
-            id=user.id,
-            username=user.username,
-            email=user.email,
-            role=user.role,
-            is_active=user.is_active,
-            created_at=user.created_at,
-            last_login_at=user.last_login_at
-        )
-        for user in result.scalars().all()
-    ]
-
-
-@router.patch("/users/{user_id}/deactivate")
-async def deactivate_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    """Deactivate a user account."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User {user_id} not found.",
+        )
 
-    if user.role == "admin":
-        raise HTTPException(status_code=403, detail="Cannot deactivate admin users")
-
-    user.is_active = False
+    old_role = user.role
+    user.role = body.role
     await db.commit()
 
-    return {"message": f"User {user.username} deactivated successfully"}
+    logger.info(
+        "User role updated",
+        admin=admin.username,
+        target_user_id=user_id,
+        old_role=old_role,
+        new_role=body.role,
+    )
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "message": f"Role updated from '{old_role}' to '{body.role}'"
+    }
+
+
+@router.post("/admin/users", response_model=UserResponse, status_code=201)
+async def create_user_admin(
+    body: CreateUserRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new user (admin only)."""
+    from app.services.auth_service import hash_password
+
+    # Check if username already exists
+    existing = await db.execute(select(User).where(User.username == body.username))
+    if existing.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already taken.",
+        )
+
+    # Check if email already exists
+    existing_email = await db.execute(select(User).where(User.email == body.email))
+    if existing_email.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered.",
+        )
+
+    user = User(
+        username=body.username,
+        email=body.email,
+        password_hash=hash_password(body.password),
+        role=body.role,
+        is_active=body.is_active,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    logger.info(
+        "User created by admin",
+        admin=admin.username,
+        new_user=body.username,
+        role=body.role,
+    )
+
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at.isoformat() if user.created_at else None,
+        updated_at=user.updated_at.isoformat() if user.updated_at else None,
+        last_login_at=None,
+    )
+
+
+@router.get("/admin/traffic", response_model=TrafficStats)
+async def get_traffic_stats(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    period_days: int = 7,
+):
+    """Get traffic statistics for admin dashboard (admin only)."""
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.utcnow() - timedelta(days=period_days)
+
+    # Total requests
+    total_result = await db.execute(
+        select(func.count(RequestLog.id)).where(RequestLog.timestamp >= cutoff)
+    )
+    total = total_result.scalar()
+
+    # By status code
+    status_result = await db.execute(
+        select(RequestLog.status_code, func.count(RequestLog.id))
+        .where(RequestLog.timestamp >= cutoff)
+        .group_by(RequestLog.status_code)
+    )
+    by_status = [{"status_code": s, "count": c} for s, c in status_result.all()]
+
+    # By method
+    method_result = await db.execute(
+        select(RequestLog.method, func.count(RequestLog.id))
+        .where(RequestLog.timestamp >= cutoff)
+        .group_by(RequestLog.method)
+    )
+    by_method = [{"method": m, "count": c} for m, c in method_result.all()]
+
+    # Average duration
+    avg_result = await db.execute(
+        select(func.avg(RequestLog.duration_ms)).where(RequestLog.timestamp >= cutoff)
+    )
+    avg_duration = avg_result.scalar() or 0
+
+    # Top paths
+    top_result = await db.execute(
+        select(RequestLog.path, func.count(RequestLog.id))
+        .where(RequestLog.timestamp >= cutoff)
+        .group_by(RequestLog.path)
+        .order_by(func.count(RequestLog.id).desc())
+        .limit(10)
+    )
+    top_paths = [{"path": p, "count": c} for p, c in top_result.all()]
+
+    return TrafficStats(
+        total_requests=total,
+        requests_by_status=by_status,
+        requests_by_method=by_method,
+        avg_duration_ms=round(avg_duration, 2),
+        top_paths=top_paths,
+        period_days=period_days,
+    )

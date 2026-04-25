@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourorg/market-scraper/internal/alpaca"
-	"github.com/yourorg/market-scraper/internal/cache"
-	"github.com/yourorg/market-scraper/internal/db"
-	"github.com/yourorg/market-scraper/internal/ratelimit"
+	"scraper/internal/alpaca"
+	"scraper/internal/cache"
+	"scraper/internal/db"
+	"scraper/internal/ratelimit"
+
 	"go.uber.org/zap"
 )
 

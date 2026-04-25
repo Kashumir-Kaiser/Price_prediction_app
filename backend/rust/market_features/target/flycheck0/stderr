@@ -1,0 +1,301 @@
+   1.171339600s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: false }/TargetInner { ..: lib_target("market_features", ["cdylib"], "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\src\\lib.rs", Edition2021) }
+   1.176729400s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-b308a8ac72182a05\lib-market_features`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.269397600s  INFO prepare_target{force=false package_id=polars v0.39.2 target="polars"}: cargo::core::compiler::fingerprint: fingerprint dirty for polars v0.39.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("polars", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\polars-0.39.2\\src\\lib.rs", Edition2021) }
+   1.270105100s  INFO prepare_target{force=false package_id=polars v0.39.2 target="polars"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(FailedToReadMetadata { path: "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\target\\debug\\deps\\libpolars-fea7ebd26682677b.rmeta" }))
+   1.374138200s  INFO prepare_target{force=false package_id=polars-core v0.39.2 target="polars_core"}: cargo::core::compiler::fingerprint: fingerprint dirty for polars-core v0.39.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("polars_core", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\polars-core-0.39.2\\src\\lib.rs", Edition2021) }
+   1.374258100s  INFO prepare_target{force=false package_id=polars-core v0.39.2 target="polars_core"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(FailedToReadMetadata { path: "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\target\\debug\\deps\\libpolars_core-051efd5d7b31b060.rmeta" }))
+   1.405102500s  INFO prepare_target{force=false package_id=polars-io v0.39.2 target="polars_io"}: cargo::core::compiler::fingerprint: fingerprint dirty for polars-io v0.39.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("polars_io", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\polars-io-0.39.2\\src\\lib.rs", Edition2021) }
+   1.405158800s  INFO prepare_target{force=false package_id=polars-io v0.39.2 target="polars_io"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(FailedToReadMetadata { path: "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\target\\debug\\deps\\libpolars_io-1d9c97a77e6fc2b3.rmeta" }))
+   1.411816800s  INFO prepare_target{force=false package_id=polars-time v0.39.2 target="polars_time"}: cargo::core::compiler::fingerprint: fingerprint dirty for polars-time v0.39.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("polars_time", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\polars-time-0.39.2\\src\\lib.rs", Edition2021) }
+   1.411881400s  INFO prepare_target{force=false package_id=polars-time v0.39.2 target="polars_time"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(FailedToReadMetadata { path: "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\target\\debug\\deps\\libpolars_time-7ede25457243342f.rmeta" }))
+   1.416217200s  INFO prepare_target{force=false package_id=polars-ops v0.39.2 target="polars_ops"}: cargo::core::compiler::fingerprint: fingerprint dirty for polars-ops v0.39.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("polars_ops", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\polars-ops-0.39.2\\src\\lib.rs", Edition2021) }
+   1.416285600s  INFO prepare_target{force=false package_id=polars-ops v0.39.2 target="polars_ops"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(FailedToReadMetadata { path: "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\target\\debug\\deps\\libpolars_ops-531c4a07ec5c6d80.rmeta" }))
+   1.423492100s  INFO prepare_target{force=false package_id=polars-lazy v0.39.2 target="polars_lazy"}: cargo::core::compiler::fingerprint: fingerprint dirty for polars-lazy v0.39.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("polars_lazy", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\polars-lazy-0.39.2\\src\\lib.rs", Edition2021) }
+   1.423557800s  INFO prepare_target{force=false package_id=polars-lazy v0.39.2 target="polars_lazy"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(FailedToReadMetadata { path: "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\target\\debug\\deps\\libpolars_lazy-66db8cf3d72ca8da.rmeta" }))
+   1.431951200s  INFO prepare_target{force=false package_id=polars-plan v0.39.2 target="polars_plan"}: cargo::core::compiler::fingerprint: fingerprint dirty for polars-plan v0.39.2/Check { test: false }/TargetInner { name_inferred: true, doctest: false, ..: lib_target("polars_plan", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\polars-plan-0.39.2\\src\\lib.rs", Edition2021) }
+   1.432020200s  INFO prepare_target{force=false package_id=polars-plan v0.39.2 target="polars_plan"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(FailedToReadMetadata { path: "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\target\\debug\\deps\\libpolars_plan-77423241c6e1dfb5.rmeta" }))
+   1.444346500s  INFO prepare_target{force=false package_id=pyo3 v0.21.2 target="pyo3"}: cargo::core::compiler::fingerprint: fingerprint error for pyo3 v0.21.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("pyo3", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\pyo3-0.21.2\\src\\lib.rs", Edition2021) }
+   1.444398000s  INFO prepare_target{force=false package_id=pyo3 v0.21.2 target="pyo3"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\pyo3-6536b59e54a94058\lib-pyo3`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_libgit2_prerelease
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: git_midx_writer_dump
+  18: git_filter_source_repo
+  19: git_midx_writer_dump
+  20: BaseThreadInitThunk
+  21: RtlUserThreadStart
+   1.467317200s  INFO prepare_target{force=false package_id=pyo3-ffi v0.21.2 target="pyo3_ffi"}: cargo::core::compiler::fingerprint: fingerprint error for pyo3-ffi v0.21.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("pyo3_ffi", ["lib"], "C:\\Users\\HP\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\pyo3-ffi-0.21.2\\src\\lib.rs", Edition2021) }
+   1.467372900s  INFO prepare_target{force=false package_id=pyo3-ffi v0.21.2 target="pyo3_ffi"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\pyo3-ffi-7ad932856a17861e\lib-pyo3_ffi`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_libgit2_prerelease
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: git_midx_writer_dump
+  19: git_filter_source_repo
+  20: git_midx_writer_dump
+  21: BaseThreadInitThunk
+  22: RtlUserThreadStart
+   1.470137200s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: true }/TargetInner { ..: lib_target("market_features", ["cdylib"], "C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\src\\lib.rs", Edition2021) }
+   1.470176400s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-c6e1294bb337b5b2\test-lib-market_features`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.473066000s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: false }/TargetInner { name: "market_features", doc: true, ..: with_path("C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\src\\main.rs", Edition2021) }
+   1.473158700s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-f68b8c08b1bd0b02\bin-market_features`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.476970100s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: true }/TargetInner { name: "market_features", doc: true, ..: with_path("C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\src\\main.rs", Edition2021) }
+   1.477006300s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="market_features"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-01b157aabe1551e2\test-bin-market_features`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.479012200s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_bollinger"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: true }/TargetInner { kind: "test", name: "test_bollinger", benched: false, ..: with_path("C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\tests\\test_bollinger.rs", Edition2021) }
+   1.479336600s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_bollinger"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-1154c758abbda66c\test-integration-test-test_bollinger`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.482353600s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_features"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: true }/TargetInner { kind: "test", name: "test_features", benched: false, ..: with_path("C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\tests\\test_features.rs", Edition2021) }
+   1.482395300s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_features"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-823b105e66c9847a\test-integration-test-test_features`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.484531000s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_macd"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: true }/TargetInner { kind: "test", name: "test_macd", benched: false, ..: with_path("C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\tests\\test_macd.rs", Edition2021) }
+   1.484571800s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_macd"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-edbc1ea1b50b4886\test-integration-test-test_macd`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.486830600s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_rsi"}: cargo::core::compiler::fingerprint: fingerprint error for market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features)/Check { test: true }/TargetInner { kind: "test", name: "test_rsi", benched: false, ..: with_path("C:\\Users\\HP\\Price_prediction_app\\backend\\rust\\market_features\\tests\\test_rsi.rs", Edition2021) }
+   1.486880800s  INFO prepare_target{force=false package_id=market_features v0.1.0 (C:\Users\HP\Price_prediction_app\backend\rust\market_features) target="test_rsi"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\.fingerprint\market_features-e17807581f5c4595\test-integration-test-test_rsi`
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+    Checking polars-core v0.39.2
+    Checking pyo3-ffi v0.21.2
+    Checking pyo3 v0.21.2
+error: could not compile `polars-core` (lib) due to 4 previous errors

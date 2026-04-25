@@ -1,21 +1,14 @@
-# scraper/Dockerfile
-FROM python:3.11-slim
+# Stage 1: build
+FROM golang:1.21-alpine AS builder
+RUN apk add --no-cache git ca-certificates
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /scraper ./cmd/scraper
 
-WORKDIR /app
-
-# Install system deps
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-
-# Install Python deps
-COPY scraper/requirements.txt /app/scraper-requirements.txt
-COPY backend/requirements.txt /app/backend-requirements.txt
-RUN pip install --no-cache-dir -r /app/scraper-requirements.txt -r /app/backend-requirements.txt
-
-# Build context is ./scraper — copy into /app/scraper so `scraper` is a package
-# (COPY . /app/ would flatten files and break `python -m scraper.scheduler`).
-COPY scraper/ /app/scraper/
-COPY backend/ /app/backend/
-
-ENV PYTHONPATH=/app
-
-CMD ["python", "-m", "scraper.scheduler"]
+# Stage 2: run
+FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /scraper /scraper
+ENTRYPOINT ["/scraper"]

@@ -4,7 +4,7 @@ test.describe('Dashboard', () => {
   test.beforeEach(async ({ authPage, testUser }) => {
     await authPage.gotoLogin();
     await authPage.login(testUser.email, testUser.password);
-    await expect(authPage.page).toHaveURL('/dashboard');
+    await expect(authPage.page).toHaveURL('/');
   });
 
   test('dashboard loads with chart', async ({ authPage }) => {

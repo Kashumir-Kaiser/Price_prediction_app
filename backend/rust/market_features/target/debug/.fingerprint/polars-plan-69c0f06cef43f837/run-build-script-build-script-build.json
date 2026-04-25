@@ -1,0 +1,1 @@
+{"rustc":8891013984288978370,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[13000618673211145802,"build_script_build",false,6810039158518461804]],"local":[{"RerunIfChanged":{"output":"debug\\build\\polars-plan-69c0f06cef43f837\\output","paths":["build.rs"]}}],"rustflags":[],"config":0,"compile_kind":0}

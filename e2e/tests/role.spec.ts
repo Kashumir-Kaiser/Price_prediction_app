@@ -25,7 +25,7 @@ for (const tc of roleTests) {
       await page.fill('[data-testid="email-input"]', `test_${tc.role}@example.com`);
       await page.fill('[data-testid="password-input"]', 'TestPassword123!');
       await page.click('[data-testid="login-button"]');
-      await expect(page).toHaveURL('/dashboard');
+      await expect(page).toHaveURL('/');
 
       for (const el of tc.visible) {
         await expect(page.locator(`[data-testid="${el}"]`)).toBeVisible();

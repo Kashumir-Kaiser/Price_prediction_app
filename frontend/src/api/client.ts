@@ -1,185 +1,217 @@
 /**
  * API client for backend communication
  */
-import axios, { AxiosInstance, AxiosError } from 'axios';
-import { useAuthStore } from '@/store/useAuthStore';
+import type { Prediction } from "@/types/market";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
-// Create axios instance
-export const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000,
-});
+function getToken(): string | null {
+  return localStorage.getItem("token");
+}
 
-// Request interceptor - add JWT token
-apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
-    const token = useAuthStore.getState().token;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error: AxiosError) => Promise.reject(error)
-);
+export async function apiFetch(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const url = `${API_BASE}${endpoint}`;
+  const token = getToken();
 
-// Response interceptor - handle 401
-apiClient.interceptors.response.use(
-  (response: any) => response,
-  (error: any) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid - logout and redirect
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-// Health check
-export const checkHealth = async () => {
-  const response = await apiClient.get('/health');
-  return response.data;
-};
-
-// Auth API
-export const authApi = {
-  login: async (username: string, password: string) => {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-    return response.data;
-  },
-
-  register: async (username: string, email: string, password: string) => {
-    const response = await axios.post(`${API_BASE_URL}/auth/register`, {
-      username,
-      email,
-      password,
-    });
-    return response.data;
-  },
-};
-
-// Admin API
-export const adminApi = {
-  getOverviewStats: async () => {
-    const response = await apiClient.get('/admin/stats/overview');
-    return response.data;
-  },
-
-  getTrafficStats: async () => {
-    const response = await apiClient.get('/admin/stats/traffic');
-    return response.data;
-  },
-
-  getEndpointStats: async () => {
-    const response = await apiClient.get('/admin/stats/endpoints');
-    return response.data;
-  },
-
-  getUserStats: async () => {
-    const response = await apiClient.get('/admin/stats/users');
-    return response.data;
-  },
-
-  getErrorLogs: async () => {
-    const response = await apiClient.get('/admin/stats/errors');
-    return response.data;
-  },
-
-  getUsers: async () => {
-    const response = await apiClient.get('/admin/users');
-    return response.data;
-  },
-
-  deactivateUser: async (userId: number) => {
-    const response = await apiClient.patch(`/admin/users/${userId}/deactivate`);
-    return response.data;
-  },
-};
-
-// Prices API
-export const pricesApi = {
-  getCryptoLatest: async () => {
-    const response = await apiClient.get('/prices/crypto/latest');
-    return response.data;
-  },
-
-  getCryptoHistory: async (
-    symbol: string,
-    timeframe: string = '1Day',
-    start?: string,
-    end?: string
-  ) => {
-    const response = await apiClient.get('/prices/crypto/history', {
-      params: { symbol, timeframe, start, end },
-    });
-    return response.data;
-  },
-
-  getStockLatest: async (symbol: string) => {
-    const response = await apiClient.get('/prices/stocks/latest', {
-      params: { symbol },
-    });
-    return response.data;
-  },
-
-  getStockHistory: async (symbol: string, start?: string, end?: string) => {
-    const response = await apiClient.get('/prices/stocks/history', {
-      params: { symbol, start, end },
-    });
-    return response.data;
-  },
-
-  getStockFinancials: async (symbol: string, period?: string) => {
-    const response = await apiClient.get('/prices/stocks/financials', {
-      params: { symbol, period },
-    });
-    return response.data;
-  },
-};
-
-// Predictions API
-export const predictionsApi = {
-  getCryptoPrediction: async (symbol: string, model: string = 'rf') => {
-    const response = await apiClient.get('/predictions/crypto', {
-      params: { symbol, model },
-    });
-    return response.data;
-  },
-
-  getStockPrediction: async (symbol: string, model: string = 'rf') => {
-    const response = await apiClient.get('/predictions/stock', {
-      params: { symbol, model },
-    });
-    return response.data;
-  },
-
-  triggerRetrain: async (symbol: string, assetType: string) => {
-    const response = await apiClient.post('/predictions/retrain', null, {
-      params: { symbol, asset_type: assetType },
-    });
-    return response.data;
-  },
-};
-
-// React Query hooks
-export const useMarketData = () => {
-  return {
-    fetchCryptoHistory: pricesApi.getCryptoHistory,
-    fetchStockHistory: pricesApi.getStockHistory,
-    fetchCryptoPrediction: predictionsApi.getCryptoPrediction,
-    fetchStockPrediction: predictionsApi.getStockPrediction,
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string>) || {}),
   };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  return response;
+}
+
+export async function apiPost<T>(
+  endpoint: string,
+  body: unknown,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await apiFetch(endpoint, {
+    method: "POST",
+    body: JSON.stringify(body),
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      detail: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw new ApiError(response.status, error.detail || "Request failed");
+  }
+
+  return response.json();
+}
+
+export async function apiGet<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await apiFetch(endpoint, {
+    method: "GET",
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      detail: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw new ApiError(response.status, error.detail || "Request failed");
+  }
+
+  return response.json();
+}
+
+export async function apiPatch<T>(
+  endpoint: string,
+  body: unknown,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await apiFetch(endpoint, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      detail: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw new ApiError(response.status, error.detail || "Request failed");
+  }
+
+  return response.json();
+}
+
+export async function apiDelete<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await apiFetch(endpoint, {
+    method: "DELETE",
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      detail: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw new ApiError(response.status, error.detail || "Request failed");
+  }
+
+  return response.json();
+}
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
+export const authApi = {
+  async login(username: string, password: string): Promise<{ access_token: string; role: string }> {
+    const formData = new URLSearchParams();
+    formData.append("username", username);
+    formData.append("password", password);
+
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        detail: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      throw new ApiError(response.status, error.detail || "Login failed");
+    }
+
+    return response.json();
+  },
+
+  async register(username: string, email: string, password: string): Promise<any> {
+    return apiPost("/auth/register", { username, email, password });
+  },
+};
+
+export const pricesApi = {
+  async getCryptoHistory(symbol: string, _timeframe: string, start?: string, end?: string): Promise<{ data: any[] }> {
+    const params = new URLSearchParams();
+    params.append("symbol", symbol);
+    if (start) params.append("start", start);
+    if (end) params.append("end", end);
+    return apiGet(`/prices?${params.toString()}`);
+  },
+
+  async getStockHistory(symbol: string, start?: string, end?: string): Promise<{ data: any[] }> {
+    const params = new URLSearchParams();
+    params.append("symbol", symbol);
+    if (start) params.append("start", start);
+    if (end) params.append("end", end);
+    return apiGet(`/prices?${params.toString()}`);
+  },
+
+  async getStockFinancials(_symbol: string): Promise<{ data: any | null }> {
+    // Financial endpoint is not yet available in backend.
+    return { data: null };
+  },
+};
+
+export const predictionsApi = {
+  async getCryptoPrediction(symbol: string, model: string): Promise<Prediction> {
+    return apiGet(`/predictions?symbol=${encodeURIComponent(symbol)}&model=${encodeURIComponent(model)}`);
+  },
+  async getStockPrediction(symbol: string, model: string): Promise<Prediction> {
+    return apiGet(`/predictions?symbol=${encodeURIComponent(symbol)}&model=${encodeURIComponent(model)}`);
+  },
+};
+
+export const adminApi = {
+  async getUsers(): Promise<any[]> {
+    return apiGet("/admin/users");
+  },
+  async getTrafficStats(periodDays: number = 7): Promise<any> {
+    return apiGet(`/admin/traffic?period_days=${periodDays}`);
+  },
+  async updateUserRole(userId: number, role: "user" | "admin"): Promise<any> {
+    return apiPatch(`/admin/users/${userId}/role`, { role });
+  },
+
+  // Backward-compatible aliases used by current dashboard.
+  async listUsers(): Promise<any[]> {
+    return this.getUsers();
+  },
+  async getOverviewStats(): Promise<any> {
+    return this.getTrafficStats();
+  },
+  async getEndpointStats(): Promise<any[]> {
+    return [];
+  },
+  async getUserStats(): Promise<any[]> {
+    return [];
+  },
+  async getErrorLogs(): Promise<any[]> {
+    return [];
+  },
+  async deactivateUser(userId: number): Promise<any> {
+    return apiPatch(`/admin/users/${userId}/role`, { role: "user" });
+  },
 };

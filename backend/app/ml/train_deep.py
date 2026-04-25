@@ -110,7 +110,7 @@ def train_and_save(
     
     os.makedirs(cache_dir, exist_ok=True)
     
-    device = torch.device("cpu")  # MVP: CPU only
+    device = torch.device(os.getenv("DEVICE", "cpu"))
     
     # Create sequences
     X_seq, y_seq = create_sequences(X, y, seq_length)

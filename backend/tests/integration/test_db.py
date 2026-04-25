@@ -3,13 +3,13 @@ import pytest
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from app.db.models import OHLCVCrypto, OHLCVStocks
+from app.db.models import CryptoBar, StockBar
 
 
 @pytest.mark.asyncio
 async def test_insert_and_retrieve_crypto(db_session: AsyncSession):
     """Insert a crypto row and fetch it back."""
-    stock = OHLCVCrypto(
+    stock = CryptoBar(
         symbol="BTC/USD",
         ts=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
         open=42000.0,
@@ -17,14 +17,13 @@ async def test_insert_and_retrieve_crypto(db_session: AsyncSession):
         low=41000.0,
         close=42500.0,
         volume=1000000.0,
-        vwap=42500.0,
     )
     db_session.add(stock)
     await db_session.commit()
     await db_session.refresh(stock)
 
     result = await db_session.execute(
-        text("SELECT * FROM ohlcv_crypto WHERE symbol = 'BTC/USD'")
+        text("SELECT * FROM crypto_bars WHERE symbol = 'BTC/USD'")
     )
     row = result.fetchone()
     assert row is not None
@@ -38,7 +37,7 @@ async def test_upsert_behavior_stocks(db_session: AsyncSession):
     
     ts = datetime(2024, 1, 1).date()
     for close_price in [100.0, 200.0]:
-        stmt = insert(OHLCVStocks).values(
+        stmt = insert(StockBar).values(
             symbol="VCB",
             ts=ts,
             open=90.0,
@@ -54,7 +53,7 @@ async def test_upsert_behavior_stocks(db_session: AsyncSession):
         await db_session.commit()
 
     result = await db_session.execute(
-        text("SELECT close FROM ohlcv_stocks WHERE symbol = 'VCB'")
+        text("SELECT close FROM stock_bars WHERE symbol = 'VCB'")
     )
     assert float(result.scalar()) == 200.0
 
@@ -66,7 +65,7 @@ async def test_multiple_symbols_crypto(db_session: AsyncSession):
     ts = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     for sym in symbols:
         db_session.add(
-            OHLCVCrypto(
+            CryptoBar(
                 symbol=sym,
                 ts=ts,
                 open=100.0,
@@ -74,12 +73,11 @@ async def test_multiple_symbols_crypto(db_session: AsyncSession):
                 low=95.0,
                 close=105.0,
                 volume=1000000.0,
-                vwap=105.0,
             )
         )
     await db_session.commit()
 
     result = await db_session.execute(
-        text("SELECT COUNT(*) FROM ohlcv_crypto WHERE symbol IN ('BTC/USD', 'ETH/USD', 'SOL/USD')")
+        text("SELECT COUNT(*) FROM crypto_bars WHERE symbol IN ('BTC/USD', 'ETH/USD', 'SOL/USD')")
     )
     assert result.scalar() == 3

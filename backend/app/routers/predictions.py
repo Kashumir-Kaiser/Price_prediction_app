@@ -1,187 +1,118 @@
-"""Predictions API router."""
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
-from typing import Optional
-from pydantic import BaseModel
+"""Prediction router with support for both classification and regression outputs."""
+import asyncio
+from typing import Optional, Literal
+from datetime import datetime
+
+from fastapi import APIRouter, Query, HTTPException, Depends
+from pydantic import BaseModel, Field
 import structlog
 
-from app.services.prediction_service import (
-    predict_crypto, predict_stock, retrain_model, get_asset_type
-)
+from app.services.prediction_service import predict_crypto, predict_stock
 from app.ml.model_registry import check_model_exists
+from app.utils.rate_limiter import RateLimitExceeded
+from app.routers.auth import get_current_active_user, require_admin
+from app.db.models import User
 
-logger = structlog.get_logger()
 router = APIRouter()
+logger = structlog.get_logger()
 
 
-# Response model
+class PredictionRequest(BaseModel):
+    """Prediction request schema."""
+    symbol: str
+    model: Literal["rf", "xgb", "lstm"] = "rf"
+
+
 class PredictionResponse(BaseModel):
+    """
+    Prediction response schema.
+
+    predicted_close: float | null
+      - null  -> regression model not available (classification-only or not yet trained)
+      - float -> regression model generated a concrete next-day close price
+    """
     symbol: str
     asset_type: str
     model: str
-    predicted_close: float
+    predicted_close: Optional[float] = Field(
+        default=None,
+        description="Predicted next-day close price. Null when regressor not available."
+    )
     direction: str
     confidence: float
-    horizon: str
-    generated_at: str
     features_used: list
+    timestamp: str
 
 
-class RetrainResponse(BaseModel):
-    job_id: str
-    status: str
-    symbol: str
-    model: str
-    message: str
-
-
-@router.get("/crypto", response_model=PredictionResponse)
-async def get_crypto_prediction(
-    symbol: str = Query(..., description="Crypto symbol (e.g., BTC/USD)"),
-    model: str = Query("rf", description="Model type (rf, xgb, lstm)")
+@router.get("/predictions", response_model=PredictionResponse)
+async def get_prediction(
+    symbol: str = Query(..., description="Asset symbol (e.g., BTC/USD, VNM)"),
+    model: Literal["rf", "xgb", "lstm"] = Query("rf", description="Model type"),
+    _: User = Depends(get_current_active_user),  # Auth required
 ):
     """
-    Get price prediction for a cryptocurrency.
-    
-    Returns:
-        Prediction with confidence score
+    Get prediction for a given symbol and model.
+
+    Returns predicted_close from regressor when available,
+    null when only classifier is trained.
     """
     try:
-        # Validate model
-        valid_models = ["rf", "xgb", "lstm"]
-        if model not in valid_models:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Invalid model. Choose from: {valid_models}"
-            )
-        
-        # Validate symbol
-        valid_symbols = ["BTC/USD", "ETH/USD", "SOL/USD", "USDT/USD", "USDC/USD"]
-        if symbol not in valid_symbols:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Invalid symbol. Supported: {valid_symbols}"
-            )
-        
-        # Check if model exists
-        if not check_model_exists(symbol, model):
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "type": "about:blank",
-                    "title": "Model Not Found",
-                    "status": 404,
-                    "detail": f"Model '{model}' for '{symbol}' not found. Please train the model first.",
-                    "model": model
-                }
-            )
-        
-        # Generate prediction
-        prediction = await predict_crypto(symbol, model)
-        return prediction
-        
-    except HTTPException:
-        raise
-    except FileNotFoundError as e:
-        logger.error("Model not found", symbol=symbol, model=model, error=str(e))
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "type": "about:blank",
-                "title": "Model Not Available",
-                "status": 503,
-                "detail": "Model not available",
-                "model": model
-            }
+        if "/" in symbol:
+            # Crypto
+            prediction = await predict_crypto(symbol, model)
+        else:
+            # Stock
+            prediction = await predict_stock(symbol, model)
+
+        return PredictionResponse(**prediction)
+
+    except FileNotFoundError:
+        logger.warning(
+            "Model not found for prediction request",
+            symbol=symbol,
+            model=model
         )
-    except Exception as e:
-        logger.error("Error generating crypto prediction", symbol=symbol, model=model, error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/stock", response_model=PredictionResponse)
-async def get_stock_prediction(
-    symbol: str = Query(..., description="Stock symbol (e.g., VNM)"),
-    model: str = Query("rf", description="Model type (rf, xgb, lstm)")
-):
-    """
-    Get price prediction for a Vietnamese stock.
-    
-    Returns:
-        Prediction with confidence score
-    """
-    try:
-        # Validate model
-        valid_models = ["rf", "xgb", "lstm"]
-        if model not in valid_models:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Invalid model. Choose from: {valid_models}"
-            )
-        
-        # Check if model exists
-        if not check_model_exists(symbol, model):
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "type": "about:blank",
-                    "title": "Model Not Found",
-                    "status": 404,
-                    "detail": f"Model '{model}' for '{symbol}' not found. Please train the model first.",
-                    "model": model
-                }
-            )
-        
-        # Generate prediction
-        prediction = await predict_stock(symbol, model)
-        return prediction
-        
-    except HTTPException:
-        raise
-    except FileNotFoundError as e:
-        logger.error("Model not found", symbol=symbol, model=model, error=str(e))
         raise HTTPException(
-            status_code=503,
-            detail={
-                "type": "about:blank",
-                "title": "Model Not Available",
-                "status": 503,
-                "detail": "Model not available",
-                "model": model
-            }
+            status_code=404,
+            detail=f"Model not trained for {symbol} with {model}"
         )
+
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    except RateLimitExceeded:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please try again later.",
+            headers={"Retry-After": "60"}
+        )
+
     except Exception as e:
-        logger.error("Error generating stock prediction", symbol=symbol, model=model, error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "Prediction generation failed",
+            symbol=symbol,
+            model=model,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate prediction"
+        )
 
 
-@router.post("/retrain", response_model=RetrainResponse)
-async def trigger_retrain(
-    background_tasks: BackgroundTasks,
-    symbol: str = Query(..., description="Asset symbol"),
-    asset_type: str = Query(..., description="Asset type (crypto, stock)")
+@router.post("/predictions/retrain")
+async def retrain_prediction_model(
+    request: PredictionRequest,
+    admin: User = Depends(require_admin),  # Admin only
 ):
     """
-    Trigger async model retraining.
-    
-    Returns:
-        Training job status
+    Trigger model retraining (admin only).
+
+    Creates a background retrain job and returns the job ID.
     """
-    try:
-        # Validate asset type
-        valid_types = ["crypto", "stock", "stable"]
-        if asset_type not in valid_types:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Invalid asset_type. Choose from: {valid_types}"
-            )
-        
-        # Trigger retrain for all models
-        result = await retrain_model(symbol, asset_type, "all")
-        
-        return result
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error triggering retrain", symbol=symbol, error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+    from app.services.prediction_service import retrain_model
+
+    asset_type = "crypto" if "/" in request.symbol else "stock"
+
+    result = await retrain_model(request.symbol, asset_type, request.model)
+    return result

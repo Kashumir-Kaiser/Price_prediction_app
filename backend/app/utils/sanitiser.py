@@ -1,45 +1,69 @@
-"""Input sanitisation utility for SQL injection protection."""
+"""Input sanitization utilities."""
 import re
-import html
-from fastapi import HTTPException
-
-# Patterns that indicate SQL injection attempts
-_SQL_PATTERNS = re.compile(
-    r"(--|;|'|\"|/\*|\*/|xp_|UNION\s+SELECT|DROP\s+TABLE|INSERT\s+INTO"
-    r"|DELETE\s+FROM|UPDATE\s+\w+\s+SET|EXEC\s*\(|CAST\s*\(|CONVERT\s*\()",
-    re.IGNORECASE,
-)
+from fastapi import HTTPException, status
 
 
-def sanitise_identifier(value: str, field_name: str = "input") -> str:
+def sanitise_identifier(value: str, field_name: str = "identifier") -> str:
     """
-    Validate that value contains no SQL injection metacharacters.
+    Sanitize a user-supplied identifier string.
 
-    Raises HTTP 422 if suspicious content is detected.
-    Use for username / email fields coming from untrusted form data.
+    Applies:
+    1. Null byte removal (prevents C-style string attacks)
+    2. Stripping leading/trailing whitespace
+    3. Length validation
 
     Args:
-        value: The input string to sanitize
-        field_name: Name of the field for error messages
+        value: Raw input string
+        field_name: Field name for error messages
 
     Returns:
-        The sanitized (stripped) string
+        Sanitized string
 
     Raises:
-        HTTPException: 422 if SQL injection patterns detected
+        HTTPException: If input is invalid after sanitization
     """
-    stripped = html.unescape(value.strip())
-
-    if _SQL_PATTERNS.search(stripped):
+    if not value:
         raise HTTPException(
-            status_code=422,
-            detail=f"Invalid characters detected in {field_name}.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{field_name} cannot be empty.",
         )
 
-    if len(stripped) > 255:
+    # Step 1: Remove null bytes
+    cleaned = value.replace("\x00", "")
+
+    # Step 2: Strip whitespace
+    cleaned = cleaned.strip()
+
+    # Step 3: Validate length after cleaning
+    if len(cleaned) == 0:
         raise HTTPException(
-            status_code=422,
-            detail=f"{field_name} exceeds maximum length.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{field_name} cannot be empty after sanitization.",
         )
 
-    return stripped
+    if len(cleaned) > 128:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{field_name} too long (max 128 characters).",
+        )
+
+    return cleaned
+
+
+def sanitise_email(value: str) -> str:
+    """Sanitize an email address."""
+    if not value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email cannot be empty.",
+        )
+
+    cleaned = value.replace("\x00", "").strip().lower()
+
+    if "@" not in cleaned or "." not in cleaned:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email format.",
+        )
+
+    return cleaned

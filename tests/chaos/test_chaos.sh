@@ -11,7 +11,7 @@ echo "=== Chaos Test Suite ==="
 # Helper: wait for backend to be healthy
 wait_for_backend() {
   for i in $(seq 1 30); do
-    if curl -sf "$BACKEND_URL/api/health" >/dev/null; then
+    if curl -sf "$BACKEND_URL/api/v1/health" >/dev/null; then
       return 0
     fi
     sleep 1
@@ -29,7 +29,7 @@ curl -sf "$TOXIPROXY_URL/proxies/$PROXY_NAME/toxics" \
   -d '{"name":"latency","type":"latency","attributes":{"latency":500,"jitter":100}}' \
   || true
 
-RESPONSE=$(curl -sf -w "\nHTTP_CODE:%{http_code}\nTIME_TOTAL:%{time_total}\n" "$BACKEND_URL/api/health" || true)
+RESPONSE=$(curl -sf -w "\nHTTP_CODE:%{http_code}\nTIME_TOTAL:%{time_total}\n" "$BACKEND_URL/api/v1/health" || true)
 echo "$RESPONSE"
 # Should succeed but take >500ms
 echo "$RESPONSE" | grep -q "HTTP_CODE:200" || echo "WARNING: health check failed under latency"
@@ -47,7 +47,7 @@ curl -sf "$TOXIPROXY_URL/proxies/$PROXY_NAME/toxics" \
 
 # Request should either succeed or timeout gracefully (not crash)
 for i in $(seq 1 5); do
-  RESPONSE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$BACKEND_URL/api/health" || echo "000")
+  RESPONSE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$BACKEND_URL/api/v1/health" || echo "000")
   echo "Attempt $i: HTTP $RESPONSE"
 done
 
@@ -68,8 +68,8 @@ curl -sf "$TOXIPROXY_URL/proxies/$PROXY_NAME" -X POST \
   -d '{"enabled":true}' || true
 
 wait_for_backend
-HEALTH=$(curl -sf "$BACKEND_URL/api/health" | jq -r '.status')
+HEALTH=$(curl -sf "$BACKEND_URL/api/v1/health" | jq -r '.status')
 echo "Recovered: status=$HEALTH"
-[ "$HEALTH" = "healthy" ] || exit 1
+[ "$HEALTH" = "ok" ] || exit 1
 
 echo "=== Chaos tests completed ==="

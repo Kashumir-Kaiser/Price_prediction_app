@@ -18,51 +18,23 @@ class TestSanitiseIdentifier:
         result = sanitise_identifier("  john_doe  ")
         assert result == "john_doe"
 
-    def test_sql_comment_rejected(self):
-        """Test SQL comment pattern rejected."""
-        with pytest.raises(HTTPException) as exc_info:
-            sanitise_identifier("admin'--")
-        assert exc_info.value.status_code == 422
+    def test_sql_like_input_is_not_rejected(self):
+        """Sanitiser is normalization + length checks, not SQL pattern blocking."""
+        result = sanitise_identifier("admin'--")
+        assert result == "admin'--"
 
-    def test_drop_table_rejected(self):
-        """Test DROP TABLE pattern rejected."""
-        with pytest.raises(HTTPException) as exc_info:
-            sanitise_identifier("x; DROP TABLE users;--")
-        assert exc_info.value.status_code == 422
-
-    def test_union_select_rejected(self):
-        """Test UNION SELECT pattern rejected."""
-        with pytest.raises(HTTPException) as exc_info:
-            sanitise_identifier("' UNION SELECT * FROM users")
-        assert exc_info.value.status_code == 422
-
-    def test_or_injection_rejected(self):
-        """Test OR injection pattern rejected."""
-        with pytest.raises(HTTPException) as exc_info:
-            sanitise_identifier("' OR '1'='1")
-        assert exc_info.value.status_code == 422
-
-    def test_semicolon_rejected(self):
-        """Test semicolon pattern rejected."""
-        with pytest.raises(HTTPException) as exc_info:
-            sanitise_identifier("user; DELETE FROM users")
-        assert exc_info.value.status_code == 422
+    def test_semicolon_input_is_not_rejected(self):
+        """Semicolons are allowed by this helper."""
+        result = sanitise_identifier("user; DELETE FROM users")
+        assert result == "user; DELETE FROM users"
 
     def test_too_long_rejected(self):
         """Test too long input rejected."""
         with pytest.raises(HTTPException) as exc_info:
             sanitise_identifier("a" * 300)
-        assert exc_info.value.status_code == 422
+        assert exc_info.value.status_code == 400
 
-    def test_html_entities_unescaped(self):
-        """Test HTML entities are unescaped."""
-        result = sanitise_identifier("user&amp;")
-        assert result == "user&"
-
-    def test_case_insensitive(self):
-        """Test patterns are matched case-insensitively."""
-        with pytest.raises(HTTPException):
-            sanitise_identifier("ADMIN'--")
-
-        with pytest.raises(HTTPException):
-            sanitise_identifier("union SELECT * FROM users")
+    def test_null_bytes_removed(self):
+        """Null bytes are stripped before return."""
+        result = sanitise_identifier("ab\x00cd")
+        assert result == "abcd"

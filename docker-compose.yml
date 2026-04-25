@@ -71,13 +71,13 @@ services:
 
   backend-test:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
       target: test
     env_file: .env
     environment:
       POSTGRES_HOST: postgres
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
       ENVIRONMENT: test
     depends_on:
       postgres:
@@ -130,19 +130,6 @@ services:
         limits:
           memory: 256m
 
-  # ───────────────────────── VNStock Sidecar ───────────────────────────────────
-  vnstock-sidecar:
-    build: ./vnstock-sidecar
-    environment:
-      POSTGRES_HOST: postgres
-    expose:
-      - "9001"
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-
   # ───────────────────────── Application stack ───────────────────────────────
 
   backend:
@@ -168,7 +155,7 @@ services:
         limits:
           memory: 1g
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -187,36 +174,27 @@ services:
           path: ./backend/Dockerfile
 
   scraper:
-    build:
-      context: .
-      dockerfile: scraper/Dockerfile
-    working_dir: /app/scraper
-    env_file: .env
-    environment:
-      PYTHONPATH: /app
-      POSTGRES_HOST: postgres
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      scraper-test:
-        condition: service_completed_successfully
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 384m
-    develop:
-      watch:
-        - action: sync
-          path: ./scraper
-          target: /app/scraper
-          ignore:
-            - "**/__pycache__"
-        - action: rebuild
-          path: ./scraper/requirements.txt
+  build:
+    context: ./scraper
+    dockerfile: Dockerfile        # new Go Dockerfile
+  env_file: .env
+  environment:
+    DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    REDIS_URL: "redis://redis:6379/0"
+    ALPACA_API_KEY: ${ALPACA_API_KEY}
+    ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY}
+    ALPACA_RATE_LIMIT_RPM: "${ALPACA_RATE_LIMIT_RPM:-200}"
+    VNSTOCK_SLEEP_BETWEEN_TICKERS: "${VNSTOCK_SLEEP_BETWEEN_TICKERS:-2}"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  deploy:
+    resources:
+      limits:
+        memory: 256m
 
   frontend:
     build: ./frontend

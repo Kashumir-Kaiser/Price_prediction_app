@@ -1,0 +1,11 @@
+C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\deps\polars_row-f20022838924b74c.d: C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\lib.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\decode.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\encode.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\fixed.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\row.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\utils.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\variable.rs
+
+C:\Users\HP\Price_prediction_app\backend\rust\market_features\target\debug\deps\libpolars_row-f20022838924b74c.rmeta: C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\lib.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\decode.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\encode.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\fixed.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\row.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\utils.rs C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\variable.rs
+
+C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\lib.rs:
+C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\decode.rs:
+C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\encode.rs:
+C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\fixed.rs:
+C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\row.rs:
+C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\utils.rs:
+C:\Users\HP\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\polars-row-0.39.2\src\variable.rs:

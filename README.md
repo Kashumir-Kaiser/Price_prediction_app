@@ -5,25 +5,49 @@ A full-stack financial market analysis platform built with Python (FastAPI), Typ
 ## Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   React     │────▶│    Nginx    │────▶│   FastAPI   │
-│  Frontend   │     │   Reverse   │     │   Backend   │
-│             │◀────│    Proxy    │◀────│             │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                                │
-                       ┌────────────────────────┼────────────────────────┐
-                       │                        │                        │
-                       ▼                        ▼                        ▼
-                ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-                │  PostgreSQL │         │    Redis    │         │  Model Cache│
-                │   (Data)    │         │   (Cache)   │         │  (Volume)   │
-                └─────────────┘         └─────────────┘         └─────────────┘
-                       ▲
-                       │
-                ┌──────┴──────┐
-                │   Scraper   │
-                │ (Scheduler) │
-                └─────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                                    Client (Browser)                                 │
+└───────────────────────────────────────┬─────────────────────────────────────────────┘
+                                        │ HTTPS / localhost:3000
+                                        ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│                              Nginx Reverse Proxy (Port 80)                         │
+│                                   Serves static assets                             │
+│                                   Proxies /api/* to backend                        │
+└──────────────────────────────────────┬─────────────────────────────────────────────┘
+                                       │
+          ┌────────────────────────────┼─────────────────────────┐
+          │                            │                         │
+          ▼                            ▼                         │
+┌──────────────────┐        ┌──────────────────┐                 │
+│   React SPA      │        │   FastAPI        │                 │
+│   (Nginx static) │        │   Backend        │                 │
+│   Port 3000      │        │   Port 8000      │                 │
+└──────────────────┘        └────────┬─────────┘                 │
+                                     │                           │
+                                     │ PostgreSQL (asyncpg)      │ 
+                                     │ Redis (aioredis)          │
+                                     │ Model Cache Volume        │
+                                     │                           │
+                          ┌──────────┴──────────┐                │
+                          │                     │                │
+                          ▼                     ▼                │
+               ┌──────────────────┐   ┌──────────────────┐       │
+               │   PostgreSQL 16  │   │     Redis 7      │       │
+               │   (Market Data)  │   │   (Cache/Rate)   │       │
+               └──────────────────┘   └──────────────────┘       │
+                          ▲                                      │
+                          │                                      │
+               ┌──────────┘                                      │
+               │                                                 │
+               ▼                                                 │
+     ┌──────────────────┐                                        │
+     │  Go Scraper      │                                        │
+     │  (Cron Jobs)     │                                        │
+     │  Alpaca / VNStock│                                        │
+     └──────────────────┘                                        │
+               │                                                 │
+               └─────────────────────────────────────────────────┘
 ```
 
 ## Features
@@ -108,8 +132,7 @@ docker compose --profile test run --rm scraper-test
 | Frontend | React 18 + TypeScript + Tailwind CSS | SPA with real-time charts |
 | Backend API | FastAPI + SQLAlchemy (async) + PostgreSQL | REST API, auth, ML inference |
 | ML Feature Engineering | Rust + PyO3 + Polars | 20-40x faster RSI/MACD/Bollinger |
-| Data Scraper | Go + pgx + go-redis | Concurrent workers with token-bucket rate limiting |
-| VN Stock Data | Python sidecar (vnstock3) | Isolated vnstock3 process with HTTP API |
+| Data Scraper | Go (cron) + Alpaca API | Concurrent workers with token-bucket rate limiting |
 | Cache | Redis 7 | Rate limiting deduplication, job completion tracking |
 | ML Models | PyTorch + scikit-learn | Price prediction, regime detection |
 | Charts | Apache ECharts | Candlestick, volume, prediction overlays |
@@ -151,10 +174,6 @@ docker compose --profile test run --rm scraper-test
 │   │   └── jobs/            # CryptoJob, VNStockJob
 │   ├── Dockerfile           # Multi-stage Go build (distroless)
 │   └── go.mod               # Go module definition
-│
-├── vnstock-sidecar/         # Python microservice for vnstock3
-│   ├── Dockerfile           # Python 3.11 slim + vnstock3
-│   └── sidecar.py           # FastAPI HTTP wrapper around vnstock3
 │
 ├── frontend/                # React SPA
 │   ├── src/                 # TypeScript source

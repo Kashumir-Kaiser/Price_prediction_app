@@ -30,6 +30,7 @@ def create_access_token(data: dict) -> str:
     """Create a JWT access token."""
     payload = data.copy()
     payload["exp"] = datetime.utcnow() + timedelta(minutes=settings.jwt_expire_minutes)
+    payload["iat"] = datetime.utcnow()
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
  
  

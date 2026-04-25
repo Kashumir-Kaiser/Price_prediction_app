@@ -6,16 +6,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"scraper/internal/alpaca"
+	"scraper/internal/cache"
+	"scraper/internal/config"
+	"scraper/internal/db"
+	"scraper/internal/jobs"
+	"scraper/internal/ratelimit"
+	"scraper/internal/vnstock"
 
 	"github.com/robfig/cron/v3"
-	"github.com/yourorg/market-scraper/internal/alpaca"
-	"github.com/yourorg/market-scraper/internal/cache"
-	"github.com/yourorg/market-scraper/internal/config"
-	"github.com/yourorg/market-scraper/internal/db"
-	"github.com/yourorg/market-scraper/internal/jobs"
-	"github.com/yourorg/market-scraper/internal/ratelimit"
-	"github.com/yourorg/market-scraper/internal/vnstock"
 	"go.uber.org/zap"
 )
 

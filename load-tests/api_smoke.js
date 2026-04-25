@@ -50,9 +50,9 @@ const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 
 export default function () {
   const endpoints = [
-    { url: `${BASE_URL}/api/health`, method: 'GET' },
-    { url: `${BASE_URL}/api/stocks`, method: 'GET' },
-    { url: `${BASE_URL}/api/stocks/BTC/USD/history`, method: 'GET' },
+    { url: `${BASE_URL}/api/v1/health`, method: 'GET' },
+    { url: `${BASE_URL}/api/v1/health/ready`, method: 'GET' },
+    { url: `${BASE_URL}/api/v1/health/live`, method: 'GET' },
   ];
 
   for (const endpoint of endpoints) {

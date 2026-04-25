@@ -1,22 +1,21 @@
-"""SQLAlchemy async database engine and session management."""
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+"""Database configuration with async engine and session factory."""
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import text
-import structlog
 
 from app.config import get_settings
+
 settings = get_settings()
 
-logger = structlog.get_logger()
-
-# Create async engine
+# Async engine for the application
 engine = create_async_engine(
     settings.database_url,
-    echo=settings.environment == "development",
-    future=True,
+    echo=False,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
 )
 
-# Create async session factory
+# Session factory
 AsyncSessionLocal = async_sessionmaker(
     engine,
     class_=AsyncSession,
@@ -24,41 +23,23 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-# Base class for declarative models
+# Base class for models
 Base = declarative_base()
 
 
 async def get_db() -> AsyncSession:
-    """Dependency to get database session."""
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
-
-
-async def init_db():
-    """Initialize database tables."""
+    """FastAPI dependency: yield a DB session, auto-close after request."""
+    session = AsyncSessionLocal()
     try:
-        async with engine.begin() as conn:
-            # Test connection
-            result = await conn.execute(text("SELECT 1"))
-            await result.fetchone()
-            logger.info("Database connection successful")
-            
-            # Create tables
-            await conn.run_sync(Base.metadata.create_all)
-            logger.info("Database tables created")
-    except Exception as e:
-        logger.error("Database initialization failed", error=str(e))
-        raise
+        yield session
+    finally:
+        await session.close()
 
 
-async def close_db():
-    """Close database connections."""
-    await engine.dispose()
-    logger.info("Database connections closed")
+# DEPRECATED: Do not use for production DB bootstrapping.
+# Alembic migrations (upgrade head) are now the authoritative path.
+# This is retained ONLY for test fixtures or temporary ephemeral DBs.
+async def _create_tables_for_tests():
+    """Create all tables -- FOR TESTS ONLY. Use Alembic for production."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

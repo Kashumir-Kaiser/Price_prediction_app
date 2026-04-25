@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/yourorg/market-scraper/internal/cache"
-	"github.com/yourorg/market-scraper/internal/db"
-	"github.com/yourorg/market-scraper/internal/vnstock"
+	"scraper/internal/cache"
+	"scraper/internal/db"
+	"scraper/internal/vnstock"
+
 	"go.uber.org/zap"
 )
 

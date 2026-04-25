@@ -7,8 +7,10 @@ import { AssetSelector } from '@/components/AssetSelector';
 import { PriceChart } from '@/components/PriceChart';
 import { PredictionCard } from '@/components/PredictionCard';
 import { StatusBar } from '@/components/StatusBar';
+import Watchlist from '@/components/Watchlist';
 import { useMarketStore } from '@/store/useMarketStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useGlobalStore } from '@/store/useGlobalStore';
 import { TrendingUp, BarChart3, Activity, Shield, LogOut } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -21,8 +23,10 @@ const Dashboard: React.FC = () => {
     isLoading,
     fetchCryptoData,
     fetchStockData,
+    setSymbol,
   } = useMarketStore();
   const { role, username, logout } = useAuthStore();
+  const { watchlist, setWatchlist } = useGlobalStore();
 
   // Initial data fetch
   useEffect(() => {
@@ -32,6 +36,12 @@ const Dashboard: React.FC = () => {
       fetchCryptoData(selectedSymbol);
     }
   }, []);
+
+  useEffect(() => {
+    if (watchlist.length === 0) {
+      setWatchlist(['BTC/USD', 'ETH/USD', 'SOL/USD', 'VNM', 'FPT']);
+    }
+  }, [watchlist.length, setWatchlist]);
 
   // Get predicted price from available predictions
   const getPredictedPrice = (): number | null => {
@@ -106,7 +116,15 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar - Asset Selector */}
           <div className="lg:col-span-1">
-            <AssetSelector />
+            <div className="space-y-4">
+              <AssetSelector />
+              <Watchlist
+                selectedSymbol={selectedSymbol}
+                onSelectSymbol={(symbol) =>
+                  setSymbol(symbol, symbol.includes('/') ? 'crypto' : 'stock')
+                }
+              />
+            </div>
           </div>
 
           {/* Main content area */}

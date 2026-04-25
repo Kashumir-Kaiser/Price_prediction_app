@@ -13,7 +13,7 @@ test.describe('Login', () => {
   test('successful login redirects to dashboard', async ({ authPage, testUser }) => {
     await authPage.gotoLogin();
     await authPage.login(testUser.email, testUser.password);
-    await expect(authPage.page).toHaveURL('/dashboard');
+    await expect(authPage.page).toHaveURL('/');
     await expect(authPage.page.locator('[data-testid="dashboard-welcome"]')).toBeVisible();
   });
 

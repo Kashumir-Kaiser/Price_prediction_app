@@ -20,8 +20,9 @@ RUN maturin build --release --out /wheels
 FROM python:3.11-slim AS py-builder
 
 WORKDIR /build
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+COPY pyproject.toml ./pyproject.toml
+COPY app/ ./app/
+RUN pip install --no-cache-dir --prefix=/install .
 
 # Install the Rust wheel built in stage 1
 COPY --from=rust-builder /wheels/*.whl /wheels/
@@ -38,9 +39,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl postgresql
 COPY --from=py-builder /install /usr/local
 
 WORKDIR /app
-COPY backend/app/ ./app/
-COPY backend/entrypoint.sh /entrypoint.sh
+COPY app/ ./app/
+COPY alembic.ini ./alembic.ini
+COPY app/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# Ensure Python can find the app package
+ENV PYTHONPATH=/app
+
+# Default LSTM device (cpu, cuda, auto) – override in docker-compose if GPU is available
+ENV DEVICE=cpu
 
 # Mount point for the model cache volume
 VOLUME ["/model-cache"]
@@ -65,9 +73,10 @@ RUN pip install --no-cache-dir \
     factory-boy>=3.3.0
 
 # Copy test files into the image
-COPY backend/tests/ /app/tests/
-COPY backend/pytest.ini /app/pytest.ini
+COPY tests/ /app/tests/
+COPY pytest.ini /app/pytest.ini
 
 # Override entrypoint — do NOT run entrypoint.sh (no DB migration, no uvicorn)
 ENTRYPOINT ["python", "-m", "pytest"]
-CMD ["tests/", "-v", "--tb=short", "--cov=app", "--cov-report=term-missing"]
+# Enforce 60% coverage threshold as per update log
+CMD ["tests/", "-v", "--tb=short", "--cov=app", "--cov-report=term-missing", "--cov-fail-under=60"]

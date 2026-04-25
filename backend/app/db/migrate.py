@@ -1,16 +1,20 @@
-"""Database migration script."""
-import asyncio
-from sqlalchemy import create_engine
-from app.db.database import Base
-from app.config import get_settings
-settings = get_settings()
+"""Database migration script using Alembic."""
+import os
+from alembic.config import Config
+from alembic import command
 
 
-def run_migrations():
-    """Run database migrations synchronously."""
-    engine = create_engine(settings.sync_database_url)
-    Base.metadata.create_all(bind=engine)
-    print("Database migrations completed successfully")
+def run_migrations() -> None:
+    """Run Alembic upgrade head -- idempotent, versioned, reversible."""
+    cfg = Config(os.path.join(os.path.dirname(__file__), "../../alembic.ini"))
+    cfg.set_main_option("sqlalchemy.url", _get_sync_url())
+    command.upgrade(cfg, "head")
+    print("[migrate] Alembic upgrade head completed.")
+
+
+def _get_sync_url() -> str:
+    from app.config import get_settings
+    return get_settings().sync_database_url
 
 
 if __name__ == "__main__":

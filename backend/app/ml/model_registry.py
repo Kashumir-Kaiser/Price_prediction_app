@@ -20,23 +20,26 @@ _lock = threading.Lock()
 CACHE_DIR = settings.model_cache_dir
 
 
-def _get_cache_key(symbol: str, model_key: str) -> str:
+def _get_cache_key(symbol: str, model_key: str, role: Optional[str] = None) -> str:
     """Generate cache key for a model."""
+    if role:
+        return f"{symbol}_{model_key}_{role}"
     return f"{symbol}_{model_key}"
 
 
-def load_classical(symbol: str, model_key: str) -> Optional[Any]:
+def load_classical(symbol: str, model_key: str, model_role: str = "clf") -> Optional[Any]:
     """
     Lazy-load a classical ML model with caching.
     
     Args:
         symbol: Asset symbol
         model_key: Model type ('rf' or 'xgb')
+        model_role: 'clf' for classifier, 'reg' for regressor
         
     Returns:
         Loaded model pipeline or None
     """
-    key = _get_cache_key(symbol, model_key)
+    key = _get_cache_key(symbol, model_key, model_role)
     
     with _lock:
         if key in _cache:
@@ -45,13 +48,14 @@ def load_classical(symbol: str, model_key: str) -> Optional[Any]:
         
         # Load from disk
         safe_symbol = symbol.replace("/", "_")
-        path = os.path.join(CACHE_DIR, f"{safe_symbol}_{model_key}.joblib")
+        path = os.path.join(CACHE_DIR, f"{safe_symbol}_{model_key}_{model_role}.joblib")
         
         if not os.path.exists(path):
             logger.warning(
                 "Model file not found",
                 symbol=symbol,
                 model=model_key,
+                role=model_role,
                 path=path
             )
             return None
@@ -65,6 +69,7 @@ def load_classical(symbol: str, model_key: str) -> Optional[Any]:
                 "Classical model loaded and cached",
                 symbol=symbol,
                 model=model_key,
+                role=model_role,
                 path=path
             )
             return model
@@ -74,6 +79,7 @@ def load_classical(symbol: str, model_key: str) -> Optional[Any]:
                 "Failed to load classical model",
                 symbol=symbol,
                 model=model_key,
+                role=model_role,
                 error=str(e)
             )
             return None
@@ -197,14 +203,22 @@ def check_model_exists(symbol: str, model_key: str) -> bool:
     if model_key == "lstm":
         path = os.path.join(CACHE_DIR, f"{safe_symbol}_lstm.pt")
     else:
-        path = os.path.join(CACHE_DIR, f"{safe_symbol}_{model_key}.joblib")
+        # Classical predictions always require the classifier artifact.
+        path = os.path.join(CACHE_DIR, f"{safe_symbol}_{model_key}_clf.joblib")
     
+    return os.path.exists(path)
+
+
+def check_regressor_exists(symbol: str, model_key: str) -> bool:
+    """Check if a classical regressor file exists."""
+    safe_symbol = symbol.replace("/", "_")
+    path = os.path.join(CACHE_DIR, f"{safe_symbol}_{model_key}_reg.joblib")
     return os.path.exists(path)
 
 
 def list_available_models(symbol: Optional[str] = None) -> Dict[str, list]:
     """List all available trained models."""
-    models = {"rf": [], "xgb": [], "lstm": []}
+    models = {"rf": set(), "xgb": set(), "lstm": set()}
     
     if not os.path.exists(CACHE_DIR):
         return models
@@ -212,21 +226,25 @@ def list_available_models(symbol: Optional[str] = None) -> Dict[str, list]:
     for filename in os.listdir(CACHE_DIR):
         if filename.endswith(".joblib"):
             parts = filename.replace(".joblib", "").split("_")
-            if len(parts) >= 2:
-                model_type = parts[-1]
-                sym = "_".join(parts[:-1])
+            # Classical naming is {symbol}_{model_key}_{role}.joblib.
+            if len(parts) >= 3:
+                role = parts[-1]
+                model_type = parts[-2]
+                sym = "_".join(parts[:-2])
+                if role not in ["clf", "reg"]:
+                    continue
                 if model_type in ["rf", "xgb"]:
                     if symbol is None or sym == symbol.replace("/", "_"):
-                        models[model_type].append(sym)
+                        models[model_type].add(sym)
         
         elif filename.endswith(".pt"):
             parts = filename.replace(".pt", "").split("_")
             if len(parts) >= 2 and parts[-1] == "lstm":
                 sym = "_".join(parts[:-1])
                 if symbol is None or sym == symbol.replace("/", "_"):
-                    models["lstm"].append(sym)
+                    models["lstm"].add(sym)
     
-    return models
+    return {k: sorted(list(v)) for k, v in models.items()}
 
 
 # CLI commands for entrypoint script

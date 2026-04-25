@@ -6,10 +6,11 @@ import numpy as np
 import pandas as pd
 import pytest
 import redis as redis_lib
+from httpx import ASGITransport, AsyncClient
 from unittest.mock import AsyncMock, Mock
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from alembic.config import Config
 from alembic import command
 
@@ -29,7 +30,16 @@ def _pg_test_url() -> str:
     user     = os.environ.get("POSTGRES_USER", "market_user")
     password = os.environ.get("POSTGRES_PASSWORD", "change_me_in_production")
     db       = os.environ.get("POSTGRES_DB", "market_db_test")
-    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
+    return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
+
+
+def _pg_test_sync_url() -> str:
+    host     = os.environ.get("POSTGRES_HOST", "localhost")
+    port     = os.environ.get("POSTGRES_PORT", "5432")
+    user     = os.environ.get("POSTGRES_USER", "market_user")
+    password = os.environ.get("POSTGRES_PASSWORD", "change_me_in_production")
+    db       = os.environ.get("POSTGRES_DB", "market_db_test")
+    return f"postgresql://{user}:{password}@{host}:{port}/{db}"
 
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/1")
@@ -40,7 +50,7 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/1")
 # ──────────────────────────────────────────────────────────────────────────────
 
 @pytest.fixture(autouse=True)
-def _override_dependencies():
+def _override_dependencies(request):
     """
     Replace two FastAPI dependencies for every test in the suite.
 
@@ -56,6 +66,12 @@ def _override_dependencies():
     Tests that need a *real* database connection should use the `db_session`
     fixture, which bypasses this override via app.dependency_overrides directly.
     """
+    # Integration tests should use real infra fixtures, not mocked dependencies.
+    node_path = str(request.node.fspath).replace("\\", "/")
+    if "/tests/integration/" in node_path:
+        yield
+        return
+
     from app.main import app
     from app.db.database import get_db
     from app.utils.rate_limiter import auth_rate_limiter
@@ -99,23 +115,23 @@ def db_engine():
     SQLAlchemy engine pointed at market_db_test.
     Runs Alembic migrations once per session, drops the schema on teardown.
     """
-    engine = create_engine(_pg_test_url(), echo=False, future=True)
+    engine = create_async_engine(_pg_test_url(), echo=False, future=True)
 
     alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("sqlalchemy.url", _pg_test_url())
+    alembic_cfg.set_main_option("sqlalchemy.url", _pg_test_sync_url())
     command.upgrade(alembic_cfg, "head")
 
     yield engine
 
-    with engine.connect() as conn:
+    cleanup_engine = create_engine(_pg_test_sync_url(), future=True)
+    with cleanup_engine.connect() as conn:
         conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
         conn.commit()
-
-    engine.dispose()
+    cleanup_engine.dispose()
 
 
 @pytest.fixture()
-def db_session(db_engine, _override_dependencies):
+async def db_session(db_engine, _override_dependencies):
     """
     Yields a real SQLAlchemy Session against market_db_test.
     Every test is wrapped in a transaction that is rolled back on teardown —
@@ -127,9 +143,13 @@ def db_session(db_engine, _override_dependencies):
     from app.main import app
     from app.db.database import get_db
 
-    connection = db_engine.connect()
-    transaction = connection.begin()
-    SessionLocal = sessionmaker(bind=connection, autocommit=False, autoflush=False)
+    connection = await db_engine.connect()
+    transaction = await connection.begin()
+    SessionLocal = async_sessionmaker(
+        bind=connection,
+        expire_on_commit=False,
+        autoflush=False,
+    )
     session = SessionLocal()
 
     # Override get_db so TestClient requests share the same transaction.
@@ -138,11 +158,12 @@ def db_session(db_engine, _override_dependencies):
 
     app.dependency_overrides[get_db] = _real_get_db
 
-    yield session
-
-    session.close()
-    transaction.rollback()
-    connection.close()
+    try:
+        yield session
+    finally:
+        await session.close()
+        await transaction.rollback()
+        await connection.close()
 
     # Restore the mock override that _override_dependencies installed.
     app.dependency_overrides.pop(get_db, None)
@@ -159,6 +180,19 @@ def redis_client():
     yield client
     client.flushdb()
     client.close()
+
+
+@pytest.fixture()
+async def client(db_session):
+    """
+    Async HTTP client for integration tests.
+    Uses the app with dependency overrides already configured by db_session.
+    """
+    from app.main import app
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as test_client:
+        yield test_client
 
 
 # ──────────────────────────────────────────────────────────────────────────────
