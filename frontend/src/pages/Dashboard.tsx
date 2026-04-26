@@ -9,7 +9,6 @@ import { PredictionCard } from '@/components/PredictionCard';
 import { StatusBar } from '@/components/StatusBar';
 import Watchlist from '@/components/Watchlist';
 import { useMarketStore } from '@/store/useMarketStore';
-import { useAuthStore } from '@/store/useAuthStore';
 import { useGlobalStore } from '@/store/useGlobalStore';
 import { TrendingUp, BarChart3, Activity, Shield, LogOut } from 'lucide-react';
 
@@ -25,7 +24,8 @@ const Dashboard: React.FC = () => {
     fetchStockData,
     setSymbol,
   } = useMarketStore();
-  const { role, username, logout } = useAuthStore();
+  const { user, role, logout } = useGlobalStore();
+  const username = user?.username ?? '';
   const { watchlist, setWatchlist } = useGlobalStore();
 
   // Initial data fetch

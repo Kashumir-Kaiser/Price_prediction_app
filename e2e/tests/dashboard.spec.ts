@@ -8,6 +8,7 @@ test.describe('Dashboard', () => {
   });
 
   test('dashboard loads with chart', async ({ authPage }) => {
+    await authPage.page.click('[data-testid="asset-btc-usd"]');
     await expect(authPage.page.locator('[data-testid="market-overview-chart"]')).toBeVisible();
   });
 

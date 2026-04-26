@@ -97,6 +97,7 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({ onSelect }) => {
             {CRYPTO_ASSETS.map((asset) => (
               <button
                 key={asset.symbol}
+                data-testid={`asset-${asset.symbol.toLowerCase().replace('/', '-')}`}
                 onClick={() => handleSelect(asset.symbol, 'crypto')}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
                   isSelected(asset.symbol)

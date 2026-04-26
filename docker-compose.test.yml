@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/1
+      ENVIRONMENT: test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: test
+    restart: "no"
+
+  scraper-test:
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    command: pytest --tb=short -q --color=yes
+    working_dir: /app/scraper
+    volumes:
+      - ./scraper/pytest.ini:/app/pytest.ini:ro
+    env_file: .env
+    environment:
+      PYTHONPATH: /app
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-market_db_test}
+      REDIS_URL: redis://redis:6379/1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 256m

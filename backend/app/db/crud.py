@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import CryptoBar, StockBar
 
+start_dt = datetime.fromisoformat(start) if start else None
+end_dt = datetime.fromisoformat(end) if end else None
+
 
 async def get_crypto_bars(
     db: AsyncSession,

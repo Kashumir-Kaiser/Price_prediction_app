@@ -32,26 +32,25 @@ func NewPostgres(ctx context.Context, dsn string) (*Postgres, error) {
 }
 
 // SaveCryptoBar inserts a single crypto bar into ohlcv_crypto (UPSERT on symbol+ts).
-func (p *Postgres) SaveCryptoBar(ctx context.Context, symbol string, ts time.Time, o, h, l, c, v, vw float64, src string) error {
+func (p *Postgres) SaveCryptoBar(ctx context.Context, symbol string, ts time.Time, o, h, l, c, v float64) error {
 	q := `
-INSERT INTO ohlcv_crypto (symbol, ts, open, high, low, close, volume, vwap)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO crypto_bars (symbol, ts, open, high, low, close, volume)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (symbol, ts) DO UPDATE SET
   open   = EXCLUDED.open,
   high   = EXCLUDED.high,
   low    = EXCLUDED.low,
   close  = EXCLUDED.close,
-  volume = EXCLUDED.volume,
-  vwap   = EXCLUDED.vwap;
+  volume = EXCLUDED.volume;
 `
-	_, err := p.Pool.Exec(ctx, q, symbol, ts, o, h, l, c, v, vw)
+	_, err := p.Pool.Exec(ctx, q, symbol, ts, o, h, l, c, v)
 	return err
 }
 
 // SaveStockBar inserts a single stock bar into ohlcv_stocks (UPSERT on symbol+ts).
-func (p *Postgres) SaveStockBar(ctx context.Context, symbol string, ts time.Time, o, h, l, c, v float64, src string) error {
+func (p *Postgres) SaveStockBar(ctx context.Context, symbol string, ts time.Time, o, h, l, c, v float64) error {
 	q := `
-INSERT INTO ohlcv_stocks (symbol, ts, open, high, low, close, volume)
+INSERT INTO stock_bars (symbol, ts, open, high, low, close, volume)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (symbol, ts) DO UPDATE SET
   open   = EXCLUDED.open,

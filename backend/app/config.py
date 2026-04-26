@@ -5,6 +5,9 @@ from functools import lru_cache
 from typing import Optional
 
 
+cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 

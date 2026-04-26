@@ -45,7 +45,7 @@ export class AuthPage {
   }
 
   async login(email: string, password: string) {
-    await this.page.fill('[data-testid="email-input"]', email);
+    await this.page.fill('[data-testid="username-input"]', email);
     await this.page.fill('[data-testid="password-input"]', password);
     await this.page.click('[data-testid="login-button"]');
   }

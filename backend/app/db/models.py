@@ -21,9 +21,9 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(16), default="user", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_login_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         Index("idx_users_username", "username"),
@@ -97,7 +97,7 @@ class RequestLog(Base):
     duration_ms = Column(Integer, nullable=False)
     client_ip = Column(String(64), nullable=True)
     username = Column(String(64), nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_request_logs_timestamp", "timestamp"),

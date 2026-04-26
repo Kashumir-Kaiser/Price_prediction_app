@@ -3,11 +3,11 @@ import asyncio
 from typing import Optional, Literal
 from datetime import datetime
 
-from fastapi import APIRouter, Query, HTTPException, Depends
+from fastapi import APIRouter, Query, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, Field
 import structlog
 
-from app.services.prediction_service import predict_crypto, predict_stock
+from app.services.prediction_service import predict_crypto, predict_stock, _execute_retrain_background
 from app.ml.model_registry import check_model_exists
 from app.utils.rate_limiter import RateLimitExceeded
 from app.routers.auth import get_current_active_user, require_admin
@@ -103,16 +103,8 @@ async def get_prediction(
 @router.post("/predictions/retrain")
 async def retrain_prediction_model(
     request: PredictionRequest,
-    admin: User = Depends(require_admin),  # Admin only
+    background_tasks: BackgroundTasks,
+    admin: User = Depends(require_admin),
 ):
-    """
-    Trigger model retraining (admin only).
-
-    Creates a background retrain job and returns the job ID.
-    """
-    from app.services.prediction_service import retrain_model
-
-    asset_type = "crypto" if "/" in request.symbol else "stock"
-
-    result = await retrain_model(request.symbol, asset_type, request.model)
-    return result
+    background_tasks.add_task(_execute_retrain_background, request.symbol, request.model)
+    return {"job_id": "created", "status": "queued"}

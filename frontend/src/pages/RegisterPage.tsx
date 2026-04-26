@@ -5,11 +5,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, User, Mail, TrendingUp } from 'lucide-react';
 import { authApi } from '@/api/client';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useGlobalStore } from '@/store/useGlobalStore';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { login: globalLogin } = useGlobalStore();
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -42,7 +42,7 @@ const RegisterPage: React.FC = () => {
 
       // Auto-login after successful registration
       const loginResponse = await authApi.login(username, password);
-      setAuth(loginResponse.access_token, loginResponse.role, username);
+      globalLogin({ username, role: loginResponse.role as 'user' | 'admin' }, loginResponse.access_token);
 
       navigate('/', { replace: true });
     } catch (err: any) {
@@ -115,6 +115,7 @@ const RegisterPage: React.FC = () => {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 id="email"
+                data-testid="email-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -133,6 +134,7 @@ const RegisterPage: React.FC = () => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 id="password"
+                data-testid="password-input"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -174,6 +176,7 @@ const RegisterPage: React.FC = () => {
 
           <button
             type="submit"
+            data-testid="register-button"
             disabled={isLoading}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >

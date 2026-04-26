@@ -64,21 +64,18 @@ class TokenBucket:
             await asyncio.sleep(0.05)
 
 
-# Auth rate limiter
-_auth_bucket = TokenBucket(capacity=10, rate=10/60)  # 10 attempts per minute per IP
-
+from collections import defaultdict
+_ip_buckets: dict[str, TokenBucket] = {}
 
 async def auth_rate_limiter(request: Request) -> None:
-    """
-    Per-IP rate limit for /api/auth/login and /api/auth/register.
-    Raises HTTP 429 with Retry-After header when limit is exceeded.
-    """
+    ip = request.client.host if request.client else "unknown"
+    bucket = _ip_buckets.setdefault(ip, TokenBucket(capacity=10, rate=10/60))
     try:
-        await _auth_bucket.acquire(timeout=0.0)  # non-blocking; consistent kwarg name
+        await bucket.acquire(timeout=0.0)
     except RateLimitExceeded:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many requests. Please wait before trying again.",
+            detail="Too many login attempts. Please try again later.",
             headers={"Retry-After": "60"},
         )
 

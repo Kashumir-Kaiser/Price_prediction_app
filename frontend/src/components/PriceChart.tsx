@@ -196,7 +196,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({
       {chartData.length > 0 ? (
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+            <ComposedChart data={chartData} data-testid="market-overview-chart" margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
               <XAxis dataKey="date" tick={{ fontSize: 12 }} />
               <YAxis
                 yAxisId="price"

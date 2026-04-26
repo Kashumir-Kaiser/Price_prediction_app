@@ -208,7 +208,7 @@ async def predict_crypto(
         direction = determine_direction(current_close, predicted_close)
     else:
         # Fallback to classification-based direction
-        direction = ["down", "flat", "up"][int(prediction)] if prediction in [0, 1, 2] else ("up" if prediction == 1 else "down")
+        direction = "up" if prediction == 1 else "down"
 
     asset_type = get_asset_type(symbol)
 
@@ -324,7 +324,7 @@ async def predict_stock(
     if predicted_close is not None:
         direction = determine_direction(current_close, predicted_close)
     else:
-        direction = ["down", "flat", "up"][int(prediction)] if prediction in [0, 1, 2] else ("up" if prediction == 1 else "down")
+        direction = "up" if prediction == 1 else "down"
 
     response = format_prediction_response(
         symbol=symbol,
@@ -386,3 +386,9 @@ async def retrain_model(
         "model": model_key,
         "message": "Retraining job queued. Model will be updated when complete."
     }
+
+async def _execute_retrain_background(symbol: str, model_key: str):
+    logger.info("Retraining triggered", symbol=symbol, model=model_key)
+    # In the future, call the actual training functions here.
+    # For now this is a placeholder.
+    return

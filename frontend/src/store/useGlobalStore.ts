@@ -18,7 +18,7 @@ interface GlobalState {
   watchlist: string[];
 
   // Actions
-  login: (user: User, token: string) => void;
+  login: (userData: { username: string; role: string }, token: string) => void;
   logout: () => void;
   addToast: (type: ToastType, title: string, message: string) => void;
   removeToast: (id: string) => void;
@@ -39,14 +39,16 @@ export const useGlobalStore = create<GlobalState>((set) => ({
   watchlist: ["BTC/USD", "ETH/USD", "SOL/USD", "VNM", "FPT"],
 
   // Auth actions
-  login: (user, token) => {
+  login: (userData: { username: string; role: string }, token: string) => {
     localStorage.setItem("token", token);
-    set({
-      user,
-      token,
-      role: user.role,
-      isLoggedIn: true,
-    });
+    const user: User = {
+      id: 0,
+      username: userData.username,
+      email: userData.username + '@placeholder.local',
+      role: userData.role as 'user' | 'admin',
+      is_active: true,
+    };
+    set({ user, token, role: user.role, isLoggedIn: true });
   },
 
   logout: () => {

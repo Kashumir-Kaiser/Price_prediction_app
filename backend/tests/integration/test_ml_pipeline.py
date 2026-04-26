@@ -2,7 +2,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from backend.app.ml.features import engineer_features, calculate_rsi, calculate_macd, calculate_bollinger_bands
+from app.ml.features import engineer_features, calculate_rsi, calculate_macd, calculate_bollinger_bands
 
 
 def test_rust_rsi_output_length():

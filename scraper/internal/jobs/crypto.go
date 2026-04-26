@@ -51,13 +51,12 @@ func CryptoJob(
 		}
 
 		for _, bar := range bars {
-			if err := postgres.SaveCryptoBar(ctx, symbol, bar.Timestamp, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume, bar.VWAP, "alpaca"); err != nil {
+			if err := postgres.SaveCryptoBar(ctx, symbol, bar.Timestamp, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume); err != nil {
 				logger.Error("db save failed", zap.String("symbol", symbol), zap.Error(err))
 				continue
 			}
 			logger.Info("saved crypto bar", zap.String("symbol", symbol), zap.Time("ts", bar.Timestamp))
 		}
-
 		if err := redis.MarkComplete(ctx, today, symbol, "crypto", 48*time.Hour); err != nil {
 			logger.Warn("redis mark complete failed", zap.Error(err))
 		}

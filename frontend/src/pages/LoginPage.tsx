@@ -5,12 +5,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Lock, User, TrendingUp } from 'lucide-react';
 import { authApi } from '@/api/client';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useGlobalStore } from '@/store/useGlobalStore';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setAuth } = useAuthStore();
+  const { login: globalLogin } = useGlobalStore();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +27,7 @@ const LoginPage: React.FC = () => {
 
     try {
       const response = await authApi.login(username, password);
-      setAuth(response.access_token, response.role, username);
+      globalLogin({ username, role: response.role as 'user' | 'admin' }, response.access_token);
       navigate(from, { replace: true });
     } catch (err: any) {
       if (err.response?.status === 401) {
@@ -79,6 +79,7 @@ const LoginPage: React.FC = () => {
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 id="username"
+                data-testid="username-input"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -98,6 +99,7 @@ const LoginPage: React.FC = () => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 id="password"
+                data-testid="password-input"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -108,6 +110,7 @@ const LoginPage: React.FC = () => {
               />
               <button
                 type="button"
+                data-testid="login-button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
@@ -128,7 +131,7 @@ const LoginPage: React.FC = () => {
         {/* Footer */}
         <p className="text-center text-gray-600 mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-blue-600 hover:text-blue-800 font-medium">
+          <Link to="/register" data-testid="register-link" className="text-blue-600 hover:text-blue-800 font-medium">
             Sign up
           </Link>
         </p>

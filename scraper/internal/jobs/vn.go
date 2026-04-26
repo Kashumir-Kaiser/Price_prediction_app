@@ -45,7 +45,7 @@ func VNStockJob(
 
 		for _, bar := range bars {
 			ts, _ := time.Parse("2006-01-02", bar.Ts)
-			if err := postgres.SaveStockBar(ctx, symbol, ts, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume, "vnstock"); err != nil {
+			if err := postgres.SaveStockBar(ctx, symbol, ts, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume); err != nil {
 				logger.Error("db save failed", zap.String("symbol", symbol), zap.Error(err))
 				continue
 			}
