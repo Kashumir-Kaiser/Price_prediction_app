@@ -104,23 +104,23 @@ The application will be available at:
 
 ### Normal Boot
 ```bash
+# Build and start all application services (no tests)
 docker compose up -d --build
 ```
 
-### Skip Tests in Development
-```bash
-docker compose up -d --build \
-  --scale backend-test=0 \
-  --scale scraper-test=0 \
-  --scale frontend-test=0
-```
-
 ### Run Only Tests
+Tests are isolated in a separate Compose file (docker-compose.test.yml).
+Run all test containers and exit:
+
 ```bash
 # Run all test containers and exit
-docker compose --profile test run --rm backend-test
-docker compose --profile test run --rm frontend-test
-docker compose --profile test run --rm scraper-test
+docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit backend-test frontend-test scraper-test
+```
+
+To run only one test service:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm backend-test
 ```
 
 ---
@@ -282,6 +282,12 @@ go build -o scraper ./cmd/scraper
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) runs the full test matrix on every push/PR:
 
+```bash
+docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit <service>
+```
+
+---
+
 ### Jobs
 
 | Job | Trigger | Description |
@@ -319,14 +325,18 @@ cd backend && pytest tests/unit -v --cov=app
 # Frontend
 cd frontend && npx vitest run
 
-# Scraper
+# Scraper (unit + integration tests)
 cd scraper && go test ./internal/... -v
 ```
 
 ### Integration Tests
 ```bash
-cd backend
-pytest tests/integration -v
+# Backend integration tests (requires a running test database)
+cd backend && pytest tests/integration -v
+
+# Scraper integration tests (uses testcontainers, no external services needed)
+cd scraper && go test ./internal/db/ -v
+cd scraper && go test ./internal/cache/ -v
 ```
 
 ### Contract Tests
@@ -341,7 +351,7 @@ cd backend && pytest contracts/pact-provider/tests -v
 ### E2E Tests
 ```bash
 # 1. Start the full stack
-docker compose up -d --build --scale backend-test=0 --scale scraper-test=0 --scale frontend-test=0
+docker compose up -d --build
 
 # 2. Install Playwright
 cd e2e && npm install && npx playwright install chromium
@@ -388,12 +398,12 @@ docker run -d --name toxiproxy --network host ghcr.io/shopify/toxiproxy
 
 ### Test Dependency Chain
 ```
-postgres + redis ──► backend-test   ──► backend  ──► nginx
-               └──► scraper-test  ──► scraper
-               └──► frontend-test ──► frontend ────┘
+postgres + redis ──► backend-test
+               └──► scraper-test
+               └──► frontend-test
 ```
 
-Normal boot requires all tests to pass. To skip tests in development, scale test services to 0.
+All test containers exit after completing their suite; the application stack remains independent.
 
 ---
 

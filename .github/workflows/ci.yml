@@ -220,7 +220,7 @@ jobs:
           npx playwright install chromium
       - name: Build & start stack
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit backend-test --abort-on-container-exit scraper-test --abort-on-container-exit frontend-test
+          docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit backend-test scraper-test frontend-test
           sleep 30
       - name: Run E2E tests
         run: cd e2e && npx playwright test
@@ -245,7 +245,7 @@ jobs:
         with:
           node-version: '20'
       - name: Build stack
-        run: docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit backend-test --abort-on-container-exit scraper-test --abort-on-container-exit frontend-test
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit backend-test scraper-test frontend-test
       - name: Run k6
         run: |
           docker run --rm --network host             -v $(pwd)/load-tests:/tests             grafana/k6:latest run /tests/api_smoke.js
@@ -260,7 +260,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build stack
-        run: docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit backend-test --abort-on-container-exit scraper-test --abort-on-container-exit frontend-test
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit backend-test scraper-test frontend-test
       - name: Install toxiproxy & run chaos
         run: |
           docker run --rm --network host ghcr.io/shopify/toxiproxy-cli:latest             toxic add -t latency -a latency=500 -d toxiproxy:8474 backend
