@@ -2,7 +2,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 1: Rust builder — compiles the market_features PyO3 extension
 # ──────────────────────────────────────────────────────────────────────────────
-FROM rust:1.77-slim AS rust-builder
+FROM rust:1.88-slim AS rust-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev python3-pip libssl-dev pkg-config \
@@ -10,9 +10,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip3 install maturin --break-system-packages
 
+ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+# Limit Rust parallelism to drastically reduce peak memory usage
+ENV CARGO_BUILD_JOBS=1
+
 WORKDIR /rust
 COPY rust/market_features/ .
-RUN maturin build --release --out /wheels
+
+# Use --jobs 1 to override any maturin defaults
+RUN maturin build --release --jobs 1 --out /wheels
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 2: Python dependencies builder
@@ -22,7 +28,11 @@ FROM python:3.11-slim AS py-builder
 WORKDIR /build
 COPY pyproject.toml ./pyproject.toml
 COPY app/ ./app/
-RUN pip install --no-cache-dir --prefix=/install .
+RUN pip install --no-cache-dir --prefix=/install \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    --timeout 1800 \
+    --retries 5 \
+    .
 
 # Install the Rust wheel built in stage 1
 COPY --from=rust-builder /wheels/*.whl /wheels/

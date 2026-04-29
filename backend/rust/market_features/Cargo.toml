@@ -8,8 +8,9 @@ name = "market_features"
 crate-type = ["cdylib"]
 
 [dependencies]
+xxhash-rust = { version = "0.8", default-features = false, features = ["xxh64"] }
 pyo3 = { version = "0.21", features = ["extension-module"] }
-polars = { version = "0.39", features = ["lazy", "rolling_window", "dtype-full"] }
+polars = { version = "0.44", features = ["lazy", "rolling_window", "dtype-full"] }
 ndarray = "0.15"
 
 [profile.release]

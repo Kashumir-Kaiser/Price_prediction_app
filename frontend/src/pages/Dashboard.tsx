@@ -1,6 +1,3 @@
-/**
- * Main dashboard page
- */
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AssetSelector } from '@/components/AssetSelector';
@@ -10,7 +7,8 @@ import { StatusBar } from '@/components/StatusBar';
 import Watchlist from '@/components/Watchlist';
 import { useMarketStore } from '@/store/useMarketStore';
 import { useGlobalStore } from '@/store/useGlobalStore';
-import { TrendingUp, BarChart3, Activity, Shield, LogOut } from 'lucide-react';
+import { useThemeStore } from '@/store/useThemeStore';
+import { TrendingUp, BarChart3, Activity, Shield, LogOut, Moon, Sun } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -27,8 +25,8 @@ const Dashboard: React.FC = () => {
   const { user, role, logout } = useGlobalStore();
   const username = user?.username ?? '';
   const { watchlist, setWatchlist } = useGlobalStore();
+  const { theme, toggleTheme } = useThemeStore();
 
-  // Initial data fetch
   useEffect(() => {
     if (assetType === 'stock') {
       fetchStockData(selectedSymbol);
@@ -43,12 +41,9 @@ const Dashboard: React.FC = () => {
     }
   }, [watchlist.length, setWatchlist]);
 
-  // Get predicted price from available predictions
   const getPredictedPrice = (): number | null => {
     const availablePredictions = Object.values(predictions);
-    if (availablePredictions.length > 0) {
-      return availablePredictions[0].predicted_close;
-    }
+    if (availablePredictions.length > 0) return availablePredictions[0].predicted_close;
     return null;
   };
 
@@ -58,9 +53,9 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -68,41 +63,48 @@ const Dashboard: React.FC = () => {
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                   Stock & Crypto Prediction Platform
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   ML-powered price predictions for crypto and Vietnamese stocks
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Admin link - only visible to admins */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
+
               {role === 'admin' && (
                 <Link
                   to="/admin"
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
                 >
                   <Shield className="w-4 h-4" />
                   Admin
                 </Link>
               )}
 
-              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg">
-                <Activity className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-blue-700">
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                   {selectedSymbol}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg">
-                <span className="text-sm text-gray-600">{username}</span>
+              <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-300">{username}</span>
               </div>
 
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -114,7 +116,7 @@ const Dashboard: React.FC = () => {
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Asset Selector */}
+          {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="space-y-4">
               <AssetSelector />
@@ -129,7 +131,6 @@ const Dashboard: React.FC = () => {
 
           {/* Main content area */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Price Chart */}
             <PriceChart
               showSMA={true}
               showBollinger={false}
@@ -139,58 +140,34 @@ const Dashboard: React.FC = () => {
             {/* Predictions Section */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-bold text-gray-900">ML Predictions</h2>
-                <span className="text-sm text-gray-500">
+                <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">ML Predictions</h2>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   Next-day price direction predictions
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <PredictionCard
-                  prediction={predictions['rf']}
-                  modelName="rf"
-                  isLoading={isLoading}
-                />
-                <PredictionCard
-                  prediction={predictions['xgb']}
-                  modelName="xgb"
-                  isLoading={isLoading}
-                />
-                <PredictionCard
-                  prediction={predictions['lstm']}
-                  modelName="lstm"
-                  isLoading={isLoading}
-                />
+                <PredictionCard prediction={predictions['rf']} modelName="rf" isLoading={isLoading} />
+                <PredictionCard prediction={predictions['xgb']} modelName="xgb" isLoading={isLoading} />
+                <PredictionCard prediction={predictions['lstm']} modelName="lstm" isLoading={isLoading} />
               </div>
             </div>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <p className="text-sm text-gray-500">Selected Asset</p>
-                <p className="text-lg font-bold text-gray-900">{selectedSymbol}</p>
-                <p className="text-xs text-gray-400 capitalize">{assetType}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <p className="text-sm text-gray-500">Models Available</p>
-                <p className="text-lg font-bold text-gray-900">
-                  {Object.keys(predictions).length}/3
-                </p>
-                <p className="text-xs text-gray-400">RF, XGB, LSTM</p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <p className="text-sm text-gray-500">Prediction Horizon</p>
-                <p className="text-lg font-bold text-gray-900">1 Day</p>
-                <p className="text-xs text-gray-400">Next close price</p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <p className="text-sm text-gray-500">Data Source</p>
-                <p className="text-lg font-bold text-gray-900">
-                  {assetType === 'stock' ? 'vnstock' : 'Alpaca'}
-                </p>
-                <p className="text-xs text-gray-400">Real-time market data</p>
-              </div>
+              {[
+                { label: 'Selected Asset', value: selectedSymbol, sub: assetType },
+                { label: 'Models Available', value: `${Object.keys(predictions).length}/3`, sub: 'RF, XGB, LSTM' },
+                { label: 'Prediction Horizon', value: '1 Day', sub: 'Next close price' },
+                { label: 'Data Source', value: assetType === 'stock' ? 'vnstock' : 'Alpaca', sub: 'Real-time market data' },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-colors">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 capitalize">{stat.sub}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

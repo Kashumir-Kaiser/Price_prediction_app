@@ -4,6 +4,5 @@ build-backend = "maturin"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-python-source = "python"
 module-name = "market_features"
 strip = true

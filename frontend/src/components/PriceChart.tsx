@@ -202,7 +202,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                 yAxisId="price"
                 domain={['auto', 'auto']}
                 tick={{ fontSize: 12 }}
-                tickFormatter={(value) =>
+                tickFormatter={(value: number) => 
                   value >= 1000 ? `$${(value / 1000).toFixed(1)}k` : `$${value.toFixed(2)}`
                 }
               />
@@ -211,7 +211,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                   yAxisId="volume"
                   orientation="right"
                   tick={{ fontSize: 10 }}
-                  tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
+                  tickFormatter={(value: number) => `${(value / 1000000).toFixed(0)}M`}
                 />
               )}
               <Tooltip

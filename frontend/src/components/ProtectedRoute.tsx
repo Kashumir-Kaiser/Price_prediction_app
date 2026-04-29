@@ -1,9 +1,6 @@
-/**
- * Protected route component - redirects to login if not authenticated
- */
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useGlobalStore } from '@/store/useGlobalStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,14 +11,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireAdmin = false,
 }) => {
-  const { isAuthenticated, role, checkAuth } = useAuthStore();
+  const { isLoggedIn, role } = useGlobalStore();
   const location = useLocation();
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  if (!isAuthenticated) {
+  if (!isLoggedIn) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -38,5 +31,3 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   return <>{children}</>;
 };
-
-export default ProtectedRoute;

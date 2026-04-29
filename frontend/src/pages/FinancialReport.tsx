@@ -1,180 +1,183 @@
-/**
- * Financial report page for VN stocks
- */
-import React, { useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FileText, TrendingUp, DollarSign, PieChart } from 'lucide-react';
-import { FinancialReportTable } from '@/components/FinancialReportTable';
+import React, { useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 import { useMarketStore } from '@/store/useMarketStore';
 
-const FinancialReport: React.FC = () => {
-  const { symbol } = useParams<{ symbol: string }>();
-  const { selectedSymbol, setSymbol, fetchStockData } = useMarketStore();
+interface FinancialMetric {
+  label: string;
+  key: string;
+  format?: 'number' | 'percent' | 'currency';
+}
 
-  useEffect(() => {
-    if (symbol && symbol !== selectedSymbol) {
-      setSymbol(symbol, 'stock');
-      fetchStockData(symbol);
-    }
-  }, [symbol]);
+const RATIO_METRICS: FinancialMetric[] = [
+  { label: 'P/E Ratio', key: 'P/E', format: 'number' },
+  { label: 'P/B Ratio', key: 'P/B', format: 'number' },
+  { label: 'EPS', key: 'EPS', format: 'currency' },
+  { label: 'ROE', key: 'ROE', format: 'percent' },
+  { label: 'ROA', key: 'ROA', format: 'percent' },
+  { label: 'Debt/Equity', key: 'Debt/Equity', format: 'number' },
+];
+
+const INCOME_METRICS: FinancialMetric[] = [
+  { label: 'Revenue', key: 'revenue', format: 'currency' },
+  { label: 'Net Profit', key: 'net_profit', format: 'currency' },
+  { label: 'Gross Margin', key: 'gross_margin', format: 'percent' },
+  { label: 'Operating Margin', key: 'operating_margin', format: 'percent' },
+  { label: 'Net Margin', key: 'net_margin', format: 'percent' },
+];
+
+const formatValue = (value: number | string | undefined, format?: string): string => {
+  if (value === undefined || value === null) return '-';
+
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return String(value);
+
+  switch (format) {
+    case 'percent':
+      return `${(num * 100).toFixed(2)}%`;
+    case 'currency':
+      if (Math.abs(num) >= 1e9) {
+        return `${(num / 1e9).toFixed(2)}B`;
+      } else if (Math.abs(num) >= 1e6) {
+        return `${(num / 1e6).toFixed(2)}M`;
+      }
+      return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    default:
+      return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+};
+
+export const FinancialReportTable: React.FC = () => {
+  const { financials, selectedSymbol, isLoading } = useMarketStore();
+  const [showQuarterly, setShowQuarterly] = useState(true);
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 transition-colors">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const ratios = financials?.ratios || [];
+  const incomeStatements = financials?.income_statement || [];
+
+  // Get unique periods
+  const allPeriods = new Set<string>();
+  ratios.forEach((r: any) => {
+    if (r.period) allPeriods.add(r.period);
+  });
+  incomeStatements.forEach((i: any) => {
+    if (i.period) allPeriods.add(i.period);
+  });
+
+  const periods = Array.from(allPeriods).sort().reverse().slice(0, showQuarterly ? 4 : 4);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 transition-colors">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                to="/"
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Back to Dashboard</span>
-              </Link>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Financial Report
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {selectedSymbol} - Detailed Financial Analysis
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <a
-                href={`https://www.hsx.vn/Modules/Listed/Web/SymbolDetail/${selectedSymbol}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium"
-              >
-                View on HOSE
-              </a>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-blue-600" />
-              </div>
-              <span className="text-sm text-gray-500">Stock Symbol</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{selectedSymbol}</p>
-            <p className="text-xs text-gray-400">HOSE Listed</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-green-600" />
-              </div>
-              <span className="text-sm text-gray-500">Exchange</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">HOSE</p>
-            <p className="text-xs text-gray-400">Ho Chi Minh Stock Exchange</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                <PieChart className="w-4 h-4 text-purple-600" />
-              </div>
-              <span className="text-sm text-gray-500">Data Source</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">vnstock</p>
-            <p className="text-xs text-gray-400">TCBS/VCI Data</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                <FileText className="w-4 h-4 text-orange-600" />
-              </div>
-              <span className="text-sm text-gray-500">Reports</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">Quarterly</p>
-            <p className="text-xs text-gray-400">Last 8 quarters</p>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Financial Reports</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {selectedSymbol} - Key Financial Metrics
+          </p>
         </div>
 
-        {/* Financial Report Table */}
-        <FinancialReportTable />
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showQuarterly}
+              onChange={(e) => setShowQuarterly(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Quarterly View</span>
+          </label>
 
-        {/* Additional Information */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Data Sources */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Data Sources</h3>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <div>
-                  <p className="font-medium text-gray-900">TCBS (Techcombank Securities)</p>
-                  <p className="text-sm text-gray-500">Primary source for OHLCV and financial data</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                <div>
-                  <p className="font-medium text-gray-900">VCI (Viet Capital Securities)</p>
-                  <p className="text-sm text-gray-500">Secondary source for verification</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                <div>
-                  <p className="font-medium text-gray-900">HOSE/HNX Official</p>
-                  <p className="text-sm text-gray-500">Official exchange filings and announcements</p>
-                </div>
-              </li>
-            </ul>
-          </div>
-
-          {/* Metrics Explanation */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Key Metrics</h3>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <div>
-                  <p className="font-medium text-gray-900">P/E Ratio</p>
-                  <p className="text-sm text-gray-500">Price-to-Earnings ratio indicates valuation relative to earnings</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                <div>
-                  <p className="font-medium text-gray-900">ROE</p>
-                  <p className="text-sm text-gray-500">Return on Equity measures profitability relative to shareholder equity</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                <div>
-                  <p className="font-medium text-gray-900">Debt/Equity</p>
-                  <p className="text-sm text-gray-500">Indicates financial leverage and risk level</p>
-                </div>
-              </li>
-            </ul>
-          </div>
+          <a
+            href={`https://finance.vietstock.vn/${selectedSymbol}/tai-chinh.htm`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+          >
+            View on VietStock
+            <ExternalLink className="w-4 h-4" />
+          </a>
         </div>
-      </main>
+      </div>
+
+      {/* Financial Ratios Table */}
+      {periods.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Metric</th>
+                {periods.map((period) => (
+                  <th key={period} className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    {period}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Ratio Metrics */}
+              <tr className="bg-gray-50 dark:bg-gray-700">
+                <td colSpan={periods.length + 1} className="py-2 px-4 font-medium text-gray-900 dark:text-white">
+                  Valuation Ratios
+                </td>
+              </tr>
+              {RATIO_METRICS.map((metric) => (
+                <tr key={metric.key} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <td className="py-3 px-4 text-gray-700 dark:text-gray-300">{metric.label}</td>
+                  {periods.map((period) => {
+                    const ratioData = ratios.find((r: any) => r.period === period)?.data || {};
+                    const value = ratioData[metric.key];
+                    return (
+                      <td key={period} className="text-right py-3 px-4 text-gray-900 dark:text-gray-100">
+                        {formatValue(value, metric.format)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+
+              {/* Income Metrics */}
+              <tr className="bg-gray-50 dark:bg-gray-700">
+                <td colSpan={periods.length + 1} className="py-2 px-4 font-medium text-gray-900 dark:text-white">
+                  Income Statement
+                </td>
+              </tr>
+              {INCOME_METRICS.map((metric) => (
+                <tr key={metric.key} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <td className="py-3 px-4 text-gray-700 dark:text-gray-300">{metric.label}</td>
+                  {periods.map((period) => {
+                    const incomeData = incomeStatements.find((i: any) => i.period === period)?.data || {};
+                    const value = incomeData[metric.key];
+                    return (
+                      <td key={period} className="text-right py-3 px-4 text-gray-900 dark:text-gray-100">
+                        {formatValue(value, metric.format)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <p className="text-gray-500 dark:text-gray-400">No financial data available</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+            Financial reports may not be available for this symbol
+          </p>
+        </div>
+      )}
     </div>
   );
 };
 
-export default FinancialReport;
+export default FinancialReportTable;
